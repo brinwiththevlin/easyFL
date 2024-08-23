@@ -6,6 +6,7 @@ import torch
 from config import config
 from datasets.dataset import load_data
 from models.get_model import get_model
+from models.models import Models
 from statistic.collect_stat import CollectStatistics
 from util.sampling import split_data
 import numpy as np
@@ -20,13 +21,15 @@ torch.cuda.manual_seed(config.seed)  # gpu
 torch.backends.cudnn.deterministic = True  # cudnn
 
 data_train, data_test = load_data(
-    config.dataset, config.dataset_file_path, config.model_name)
+    config.dataset, config.dataset_file_path, config.model_name
+)
 data_train_loader = DataLoader(
-    data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0)  # num_workers=8
+    data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
+)  # num_workers=8
 data_test_loader = DataLoader(
-    data_test, batch_size=config.batch_size_eval, num_workers=0)  # num_workers=8
-dict_users = split_data(config.dataset, data_train,
-                        config.n_nodes, config.iid)
+    data_test, batch_size=config.batch_size_eval, num_workers=0
+)  # num_workers=8
+dict_users = split_data(config.dataset, data_train, config.n_nodes, config.iid)
 
 if config.n_nodes is None:
     config.n_nodes = len(dict_users)
@@ -101,16 +104,27 @@ def graph_selector(wieghts_list, size, tolerance):
     return graph_selector(sim_matrix, size, tolerance * 0.9)
 
 
-model = get_model(config.model_name, config.dataset, rand_seed=config.seed,
-                  step_size=config.step_size, device=config.device, flatten_weight=config.flatten_weight)
+model: Models = get_model(
+    config.model_name,
+    config.dataset,
+    rand_seed=config.seed,
+    step_size=config.step_size,
+    device=config.device,
+    flatten_weight=config.flatten_weight,
+)
 
 stat = CollectStatistics(results_file_name=config.fl_results_file_path)
 train_loader_list = []
 dataiter_list = []
 weight_list = [0] * config.n_nodes
 for n in range(config.n_nodes):
-    train_loader_list.append(DataLoader(DatasetSplit(
-        data_train, dict_users[n]), batch_size=config.batch_size_train, shuffle=True))
+    train_loader_list.append(
+        DataLoader(
+            DatasetSplit(data_train, dict_users[n]),
+            batch_size=config.batch_size_train,
+            shuffle=True,
+        )
+    )
     dataiter_list.append(iter(train_loader_list[n]))
 
 w_global_init = model.get_weight()
@@ -133,7 +147,8 @@ while True:
 
     if config.random_node_selection:
         node_subset = np.random.choice(
-            range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
+            range(config.n_nodes), config.n_nodes_in_each_round, replace=False
+        )
     else:
         node_subset = range(0, config.n_nodes_in_each_round)
 
@@ -159,7 +174,7 @@ while True:
             loss.backward()
             model.optimizer.step()
 
-        w = model.get_weight()   # deepcopy is already included here
+        w = model.get_weight()  # deepcopy is already included here
         weight_list[n] = w
 
         if w_accu is None:  # accumulated weights
@@ -173,14 +188,18 @@ while True:
 
     num_iter = num_iter + config.tau_setup
 
-    if config.aggregation_method == 'FedAvg':
+    if config.aggregation_method == "FedAvg":
         if config.flatten_weight:
-            w_global = torch.div(copy.deepcopy(w_accu), torch.tensor(
-                config.n_nodes_in_each_round).to(config.device)).view(-1)
+            w_global = torch.div(
+                copy.deepcopy(w_accu),
+                torch.tensor(config.n_nodes_in_each_round).to(config.device),
+            ).view(-1)
         else:
             for k in w_global.keys():
-                w_global[k] = torch.div(copy.deepcopy(
-                    w_accu[k]), torch.tensor(config.n_nodes_in_each_round).to(config.device))
+                w_global[k] = torch.div(
+                    copy.deepcopy(w_accu[k]),
+                    torch.tensor(config.n_nodes_in_each_round).to(config.device),
+                )
     else:
         raise Exception("Unknown parameter server method name")
 
@@ -193,12 +212,13 @@ while True:
             if (True in torch.isnan(w_global[k])) or (True in torch.isinf(w_global[k])):
                 has_nan = True
     if has_nan:
-        print('*** w_global is NaN or InF, using previous value')
+        print("*** w_global is NaN or InF, using previous value")
         w_global = copy.deepcopy(w_global_prev)
 
     if num_iter - last_output >= config.num_iter_one_output:
         stat.collect_stat_global(
-            num_iter, model, data_train_loader, data_test_loader, w_global)
+            num_iter, model, data_train_loader, data_test_loader, w_global
+        )
         last_output = num_iter
 
     if num_iter >= config.max_iter:

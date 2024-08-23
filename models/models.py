@@ -1,5 +1,7 @@
 import copy
+from typing import Optional
 from torch.autograd import Variable
+import torch
 from models.wresnet import *
 from models.lenet import *
 from models.resnet import *
@@ -7,15 +9,26 @@ from functools import reduce
 import collections
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+    os.path.join(os.path.dirname(__file__), "..")))
 
 # When computing loss and accuracy, use blocks of LOSS_ACC_BATCH_SIZE
 LOSS_ACC_BATCH_SIZE = 128
 
 
-class Models():
-    def __init__(self, rand_seed=None, learning_rate=0.001, num_classes=10, model_name='LeNet5', channels=1, img_size=32, device=torch.device('cuda'), flatten_weight=False):
+class Models:
+    def __init__(
+        self,
+        rand_seed: Optional[int] = None,
+        learning_rate: Optional[float] = 0.001,
+        num_classes: Optional[int] = 10,
+        model_name: Optional[str] = "LeNet5",
+        channels: Optional[int] = 1,
+        img_size: Optional[int] = 32,
+        device: Optional[torch.device] = torch.device("cuda"),
+        flatten_weight: Optional[bool] = False,
+    ):
         super(Models, self).__init__()
         if rand_seed is not None:
             torch.manual_seed(rand_seed)
@@ -30,40 +43,47 @@ class Models():
         self.flatten_weight = flatten_weight
         self.learning_rate = learning_rate
 
-        if model_name == 'ModelCNNMnist':
+        if model_name == "ModelCNNMnist":
             from models.cnn_mnist import ModelCNNMnist
+
             self.model = ModelCNNMnist().to(device)
             self.init_variables()
-        elif model_name == 'ModelCNNEmnist':
+        elif model_name == "ModelCNNEmnist":
             from models.cnn_emnist import ModelCNNEmnist
+
             self.model = ModelCNNEmnist().to(device)
             self.init_variables()
-        elif model_name == 'ModelCNNEmnistLeaf':
+        elif model_name == "ModelCNNEmnistLeaf":
             from models.cnn_emnist_leaf import ModelCNNEmnist
+
             self.model = ModelCNNEmnist().to(device)
-        elif model_name == 'ModelCNNCifar10':
+        elif model_name == "ModelCNNCifar10":
             from models.cnn_cifar10 import ModelCNNCifar10
+
             self.model = ModelCNNCifar10().to(device)
             self.init_variables()
-        elif model_name == 'ModelCNNCeleba':
+        elif model_name == "ModelCNNCeleba":
             from models.cnn_celeba import ModelCNNCeleba
+
             self.model = ModelCNNCeleba().to(device)
-        elif model_name == 'LeNet5':
+        elif model_name == "LeNet5":
             self.model = LeNet5()
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)  # lr 0.001
-        elif model_name == 'ResNet34':
+        elif model_name == "ResNet34":
             self.model = ResNet34(num_classes=num_classes)
             # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)  # lr 0.1 adjustable
-        elif model_name == 'ResNet18':
+        elif model_name == "ResNet18":
             self.model = ResNet18(num_classes=num_classes)
             # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-        elif model_name == 'WResNet40-2':
+        elif model_name == "WResNet40-2":
             self.model = WideResNet(
-                depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0)
+                depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0
+            )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        elif model_name == 'WResNet16-1':
+        elif model_name == "WResNet16-1":
             self.model = WideResNet(
-                depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0)
+                depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0
+            )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
         self.optimizer = torch.optim.SGD(
@@ -85,7 +105,6 @@ class Models():
         return torch.ones(shape) * 0.1
 
     def init_variables(self):
-
         self._get_weight_info()
 
         weight_dic = collections.OrderedDict()
@@ -124,11 +143,13 @@ class Models():
             state = self.model.state_dict()
             if self.flatten_weight:
                 weight_flatten_tensor = torch.Tensor(sum(self.weights_num_list)).to(
-                    state[self.weights_key_list[0]].device)
+                    state[self.weights_key_list[0]].device
+                )
                 start_index = 0
                 for i, [_, v] in zip(range(len(self.weights_num_list)), state.items()):
-                    weight_flatten_tensor[start_index:start_index +
-                                          self.weights_num_list[i]] = v.view(1, -1)
+                    weight_flatten_tensor[
+                        start_index: start_index + self.weights_num_list[i]
+                    ] = v.view(1, -1)
                     start_index += self.weights_num_list[i]
 
                 return weight_flatten_tensor
@@ -142,15 +163,15 @@ class Models():
             self.model.load_state_dict(w)
 
     def assign_flattened_weight(self, w):
-
         weight_dic = collections.OrderedDict()
         start_index = 0
 
         for i in range(len(self.weights_key_list)):
-            sub_weight = w[start_index:start_index+self.weights_num_list[i]]
+            sub_weight = w[start_index: start_index + self.weights_num_list[i]]
             if len(sub_weight) > 0:
                 weight_dic[self.weights_key_list[i]] = sub_weight.view(
-                    self.weights_size_list[i])
+                    self.weights_size_list[i]
+                )
             else:
                 weight_dic[self.weights_key_list[i]] = torch.tensor(0)
             start_index += self.weights_num_list[i]
@@ -197,8 +218,10 @@ class Models():
         avg_loss = 0.0
         with torch.no_grad():
             for i, (images, labels) in enumerate(data_test_loader):
-                images, labels = Variable(images).to(
-                    device), Variable(labels).to(device)
+                images, labels = (
+                    Variable(images).to(device),
+                    Variable(labels).to(device),
+                )
                 output = self.model(images)
                 avg_loss += self.loss_fn(output, labels).sum()
                 pred = output.data.max(1)[1]
@@ -209,7 +232,6 @@ class Models():
         return avg_loss.item(), acc
 
     def predict(self, img, w, device):
-
         self.assign_weight(w)
         img, _ = self._data_reshape(img)
         with torch.no_grad():
@@ -227,4 +249,4 @@ class Models():
             output = self.model(images)
             loss = self.loss_fn(output, labels)
             loss.backward()
-            self.optimizer.step()
+            self.optimizer.step(device)
