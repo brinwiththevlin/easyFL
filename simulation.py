@@ -80,25 +80,36 @@ def sim_matrix(weights_list):
     # return norm_matrix
 
 
-def graph_selector(wieghts_list, size, tolerance):
-    matrix = sim_matrix(wieghts_list)
+def graph_selector(weights_list, size, tolerance):
+    matrix = sim_matrix(weights_list)
     G = nx.Graph()
     G.add_nodes_from(list(range(config.n_nodes)))
-    sized_components = []
     for i in range(config.n_nodes):
         for j in range(i, config.n_nodes):
-            if matrix[i, j] > tolerance:  # TODO: check if > is correct
+            if matrix[i, j] >= tolerance:  # TODO: check if > is correct
                 G.add_edge(i, j)
+    # reject the largets connected component
+    components = sorted(nx.connected_components(G), key=len, reverse=True)
+    components.pop(0)
+    # return remaining nodes as a list
+    nodes = []
+    for component in components:
+        nodes.extend(component)
+    
+    if nodes != []:
+        return nodes
+    else:
+        return graph_selector(weights_list, size, tolerance *1.1)
 
-    for gn in nx.connected_components(G):
-        if len(gn) >= size:
-            sized_components.append(gn)
+    # for gn in nx.connected_components(G):
+    #     if len(gn) >= size:
+    #         sized_components.append(gn)
 
-    if len(sized_components) != 0:
-        return random.choice(sized_components)
+    # if len(sized_components) != 0:
+    #     return random.choice(sized_components)
 
-    # TODO: fix this line
-    return graph_selector(sim_matrix, size, tolerance * 0.9)
+    # # TODO: fix this line
+    # return graph_selector(sim_matrix, size, tolerance * 0.9)
 
 
 model = get_model(config.model_name, config.dataset, rand_seed=config.seed,
@@ -123,19 +134,18 @@ first = True
 while True:
     w_global_prev = copy.deepcopy(w_global)
 
-    # if first:
-    #     node_subset = range(config.n_nodes)
-    #     first = False
-    # else:
-    #     node_subset = graph_selector(
-    #         weight_list, config.n_nodes_in_each_round, config.tolerance)
-    #    node_subset = graph_selector(
-
-    if config.random_node_selection:
-        node_subset = np.random.choice(
-            range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
+    if first:
+        node_subset = range(config.n_nodes)
+        first = False
     else:
-        node_subset = range(0, config.n_nodes_in_each_round)
+        node_subset = graph_selector(
+            weight_list, config.n_nodes_in_each_round, config.tolerance)
+
+    # if config.random_node_selection:
+    #     node_subset = np.random.choice(
+    #         range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
+    # else:
+    #     node_subset = range(0, config.n_nodes_in_each_round)
 
     w_accu = None
     for n in node_subset:
