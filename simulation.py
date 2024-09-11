@@ -1,16 +1,15 @@
 # Part of this code is inspired by https://github.com/IBM/adaptive-federated-learning
 
-from itertools import combinations
 from torch.utils.data import Dataset, DataLoader
 import torch
 from config import config
+from similarity.plain_text import graph_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
 from models.models import Models
 from statistic.collect_stat import CollectStatistics
 from util.sampling import split_data
 import numpy as np
-import networkx as nx
 import random
 import copy
 
@@ -48,62 +47,6 @@ class DatasetSplit(Dataset):
         return image, label
 
 
-def cosine_sim(vector1, vector2):
-    temp1 = vector1 / torch.norm(vector1)
-    temp2 = vector2 / torch.norm(vector2)
-
-    return temp1.dot(temp2)
-
-    # return temp1.dot(temp2)
-    # enc_v1 = ts.ckks_vector(context, temp1)
-    # enc_v2 = ts.ckks_vector(context, temp2)
-
-    # return enc_v1.dot(enc_v2).decrypt()[0]
-
-
-def sum_of_squares(vector1, vector2):
-    return torch.sum((vector1 - vector2) ** 2)
-    # enc_v2 = ts.ckks_vector(context, vector2)
-    # enc_v1 = ts.ckks_vector(context, vector1)
-    #
-    # return (enc_v1 - enc_v2).square().sum().decrypt()[0]
-
-
-def sim_matrix(weights_list):
-    matrix = np.eye(config.n_nodes)
-    for pair in combinations(enumerate(weights_list), 2):
-        idx, values = zip(*pair)
-        matrix[idx] = cosine_sim(*values)
-    return matrix
-    # matrix = matrix + matrix.T - np.diag(matrix.diagonal())
-    # # difference between max value and min value not counting diagonal, which should be 0
-    # diff = np.max(matrix) - \
-    #     np.min(matrix[~np.eye(matrix.shape[0], dtype=bool)])
-    # norm_matrix = matrix / diff
-    # return norm_matrix
-
-
-def graph_selector(wieghts_list, size, tolerance):
-    matrix = sim_matrix(wieghts_list)
-    G = nx.Graph()
-    G.add_nodes_from(list(range(config.n_nodes)))
-    sized_components = []
-    for i in range(config.n_nodes):
-        for j in range(i, config.n_nodes):
-            if matrix[i, j] > tolerance:  # TODO: check if > is correct
-                G.add_edge(i, j)
-
-    for gn in nx.connected_components(G):
-        if len(gn) >= size:
-            sized_components.append(gn)
-
-    if len(sized_components) != 0:
-        return random.choice(sized_components)
-
-    # TODO: fix this line
-    return graph_selector(sim_matrix, size, tolerance * 0.9)
-
-
 model: Models = get_model(
     config.model_name,
     config.dataset,
@@ -116,7 +59,7 @@ model: Models = get_model(
 stat = CollectStatistics(results_file_name=config.fl_results_file_path)
 train_loader_list = []
 dataiter_list = []
-weight_list = [0] * config.n_nodes
+weight_list: list[torch.Tensor | dict] = [torch.empty(0) for _ in range(config.n_nodes)]
 for n in range(config.n_nodes):
     train_loader_list.append(
         DataLoader(
@@ -137,20 +80,21 @@ first = True
 while True:
     w_global_prev = copy.deepcopy(w_global)
 
-    # if first:
-    #     node_subset = range(config.n_nodes)
-    #     first = False
-    # else:
-    #     node_subset = graph_selector(
-    #         weight_list, config.n_nodes_in_each_round, config.tolerance)
-    #    node_subset = graph_selector(
-
-    if config.random_node_selection:
-        node_subset = np.random.choice(
-            range(config.n_nodes), config.n_nodes_in_each_round, replace=False
-        )
+    if first:
+        # TODO: figure out what to do the first round
+        node_subset = range(config.n_nodes)
+        first = False
     else:
-        node_subset = range(0, config.n_nodes_in_each_round)
+        node_subset = graph_selector(
+            weight_list, config.n_nodes_in_each_round, config.tolerance
+        )
+
+    # if config.random_node_selection:
+    #     node_subset = np.random.choice(
+    #         range(config.n_nodes), config.n_nodes_in_each_round, replace=False
+    #     )
+    # else:
+    #     node_subset = range(0, config.n_nodes_in_each_round)
 
     w_accu = None
     for n in node_subset:
@@ -181,8 +125,11 @@ while True:
             w_accu = w
         else:
             if config.flatten_weight:
+                assert isinstance(w_accu, torch.Tensor)
                 w_accu += w
             else:
+                assert isinstance(w_accu, dict)
+                assert isinstance(w, dict)
                 for k in w_accu.keys():
                     w_accu[k] += w[k]
 
@@ -190,11 +137,14 @@ while True:
 
     if config.aggregation_method == "FedAvg":
         if config.flatten_weight:
+            assert isinstance(w_accu, torch.Tensor)
             w_global = torch.div(
                 copy.deepcopy(w_accu),
                 torch.tensor(config.n_nodes_in_each_round).to(config.device),
             ).view(-1)
         else:
+            assert isinstance(w_accu, dict)
+            assert isinstance(w_global, dict)
             for k in w_global.keys():
                 w_global[k] = torch.div(
                     copy.deepcopy(w_accu[k]),
@@ -205,9 +155,11 @@ while True:
 
     has_nan = False
     if config.flatten_weight:
+        assert isinstance(w_global, torch.Tensor)
         if (True in torch.isnan(w_global)) or (True in torch.isinf(w_global)):
             has_nan = True
     else:
+        assert isinstance(w_global, dict)
         for k in w_global.keys():
             if (True in torch.isnan(w_global[k])) or (True in torch.isinf(w_global[k])):
                 has_nan = True

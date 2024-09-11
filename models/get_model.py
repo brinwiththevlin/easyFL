@@ -11,7 +11,7 @@ def get_model(
     model_name,
     dataset,
     rand_seed=None,
-    step_size=None,
+    step_size=0.001,
     device=torch.device("cuda"),
     flatten_weight=False,
 ):

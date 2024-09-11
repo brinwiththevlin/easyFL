@@ -1,4 +1,5 @@
 import os
+
 import torch
 
 
@@ -44,10 +45,12 @@ class Config:
         self.random_node_selection = True
         self.flatten_weight = True
         # self.iid = True  # only for MNIST and CIFAR*
+        # self.iid = True
         self.iid = False
         self.tau_setup = 10  # number of iterations in local training
         self.num_iter_one_output = 50
-        self.tolerance = 0.7
+        self.tolerance = 0.995
+        self.similarity = "cosine"
 
 
 config = Config()

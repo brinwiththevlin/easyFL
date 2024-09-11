@@ -2,16 +2,16 @@ import copy
 from typing import Optional
 from torch.autograd import Variable
 import torch
-from models.wresnet import *
-from models.lenet import *
-from models.resnet import *
+from torch import nn
+from models.wresnet import WideResNet
+from models.lenet import LeNet5
+from models.resnet import ResNet34, ResNet18
 from functools import reduce
 import collections
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # When computing loss and accuracy, use blocks of LOSS_ACC_BATCH_SIZE
 LOSS_ACC_BATCH_SIZE = 128
@@ -21,23 +21,20 @@ class Models:
     def __init__(
         self,
         rand_seed: Optional[int] = None,
-        learning_rate: Optional[float] = 0.001,
-        num_classes: Optional[int] = 10,
-        model_name: Optional[str] = "LeNet5",
-        channels: Optional[int] = 1,
-        img_size: Optional[int] = 32,
-        device: Optional[torch.device] = torch.device("cuda"),
-        flatten_weight: Optional[bool] = False,
+        learning_rate: float = 0.001,
+        num_classes: int = 10,
+        model_name: str = "LeNet5",
+        channels: int = 1,
+        img_size: int = 32,
+        device: torch.device = torch.device("cuda"),
+        flatten_weight: bool = False,
     ):
         super(Models, self).__init__()
         if rand_seed is not None:
             torch.manual_seed(rand_seed)
-        self.model = None
-        self.loss_fn = None
-        self.weights_key_list = None
-        self.weights_size_list = None
-        self.weights_num_list = None
-        self.optimizer = None
+        self.weights_key_list = []
+        self.weights_size_list = []
+        self.weights_num_list = []
         self.channels = channels
         self.img_size = img_size
         self.flatten_weight = flatten_weight
@@ -86,8 +83,7 @@ class Models:
             )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
-        self.optimizer = torch.optim.SGD(
-            self.model.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         self.model.to(device)
         self.loss_fn = nn.CrossEntropyLoss().to(device)
         self._get_weight_info()
@@ -148,7 +144,7 @@ class Models:
                 start_index = 0
                 for i, [_, v] in zip(range(len(self.weights_num_list)), state.items()):
                     weight_flatten_tensor[
-                        start_index: start_index + self.weights_num_list[i]
+                        start_index : start_index + self.weights_num_list[i]
                     ] = v.view(1, -1)
                     start_index += self.weights_num_list[i]
 
@@ -167,7 +163,7 @@ class Models:
         start_index = 0
 
         for i in range(len(self.weights_key_list)):
-            sub_weight = w[start_index: start_index + self.weights_num_list[i]]
+            sub_weight = w[start_index : start_index + self.weights_num_list[i]]
             if len(sub_weight) > 0:
                 weight_dic[self.weights_key_list[i]] = sub_weight.view(
                     self.weights_size_list[i]
@@ -179,8 +175,7 @@ class Models:
 
     def _data_reshape(self, imgs, labels=None):
         if len(imgs.size()) < 3:
-            x_image = imgs.view(
-                [-1, self.channels, self.img_size, self.img_size])
+            x_image = imgs.view([-1, self.channels, self.img_size, self.img_size])
             if labels is not None:
                 # From one-hot to number
                 _, y_label = torch.max(labels.data, 1)
@@ -217,7 +212,7 @@ class Models:
         total_correct = 0
         avg_loss = 0.0
         with torch.no_grad():
-            for i, (images, labels) in enumerate(data_test_loader):
+            for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = (
                     Variable(images).to(device),
                     Variable(labels).to(device),
@@ -229,7 +224,59 @@ class Models:
         avg_loss /= len(data_test_loader.dataset)
         acc = float(total_correct) / len(data_test_loader.dataset)
 
-        return avg_loss.item(), acc
+        return avg_loss, acc
+
+    def precision(self, data_test_loader, w, device, positive_class=1):
+        if w is not None:
+            self.assign_weight(w)
+
+        self.model.eval()
+        true_positive = 0
+        false_positive = 0
+        with torch.no_grad():
+            for _, (images, labels) in enumerate(data_test_loader):
+                images, labels = images.to(device), labels.to(device)
+                output = self.model(images)
+                pred = output.data.max(1)[1]
+
+                # Check true positives and false positives for the positive class
+                true_positive += (pred == positive_class).long().sum()
+                false_positive += (
+                    ((pred == positive_class) & (labels != positive_class)).long().sum()
+                )
+
+        precision = (
+            float(true_positive) / (true_positive + false_positive)
+            if (true_positive + false_positive) > 0
+            else 0.0
+        )
+
+        return precision
+
+    def recall(self, data_test_loader, w, device, positive_class=1):
+        if w is not None:
+            self.assign_weight(w)
+
+        self.model.eval()
+        true_positive = 0
+        total_actual_positive: int = 0
+        with torch.no_grad():
+            for _, (images, labels) in enumerate(data_test_loader):
+                images, labels = images.to(device), labels.to(device)
+                output = self.model(images)
+                pred = output.data.max(1)[1]
+
+                # Check true positives and total actual positives for the positive class
+                true_positive += (pred == positive_class).long().sum()
+                total_actual_positive += (labels == positive_class).long().sum()
+
+        recall = (
+            float(true_positive) / total_actual_positive
+            if total_actual_positive > 0
+            else 0.0
+        )
+
+        return recall
 
     def predict(self, img, w, device):
         self.assign_weight(w)
@@ -242,9 +289,8 @@ class Models:
 
     def train_one_epoch(self, data_train_loader, device):
         self.model.train()
-        for i, (images, labels) in enumerate(data_train_loader):
-            images, labels = Variable(images).to(
-                device), Variable(labels).to(device)
+        for _, (images, labels) in enumerate(data_train_loader):
+            images, labels = Variable(images).to(device), Variable(labels).to(device)
             self.optimizer.zero_grad()
             output = self.model(images)
             loss = self.loss_fn(output, labels)
