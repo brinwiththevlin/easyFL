@@ -1,6 +1,8 @@
 # Part of this code is inspired by https://github.com/IBM/adaptive-federated-learning
 
 from torch.utils.data import Dataset, DataLoader
+import networkx as nx
+from itertools import combinations
 import torch
 from config import config
 from similarity.plain_text import graph_selector
@@ -47,6 +49,73 @@ class DatasetSplit(Dataset):
         return image, label
 
 
+def cosine_sim(vector1, vector2):
+    temp1 = vector1 / torch.norm(vector1)
+    temp2 = vector2 / torch.norm(vector2)
+
+    return temp1.dot(temp2)
+
+    # return temp1.dot(temp2)
+    # enc_v1 = ts.ckks_vector(context, temp1)
+    # enc_v2 = ts.ckks_vector(context, temp2)
+
+    # return enc_v1.dot(enc_v2).decrypt()[0]
+
+
+def sum_of_squares(vector1, vector2):
+    return torch.sum((vector1 - vector2) ** 2)
+    # enc_v2 = ts.ckks_vector(context, vector2)
+    # enc_v1 = ts.ckks_vector(context, vector1)
+    #
+    # return (enc_v1 - enc_v2).square().sum().decrypt()[0]
+
+
+def sim_matrix(weights_list):
+    matrix = np.eye(config.n_nodes)
+    for pair in combinations(enumerate(weights_list), 2):
+        idx, values = zip(*pair)
+        matrix[idx] = cosine_sim(*values)
+    return matrix
+    # matrix = matrix + matrix.T - np.diag(matrix.diagonal())
+    # # difference between max value and min value not counting diagonal, which should be 0
+    # diff = np.max(matrix) - \
+    #     np.min(matrix[~np.eye(matrix.shape[0], dtype=bool)])
+    # norm_matrix = matrix / diff
+    # return norm_matrix
+
+
+def graph_selector(weights_list, size, tolerance):
+    matrix = sim_matrix(weights_list)
+    G = nx.Graph()
+    G.add_nodes_from(list(range(config.n_nodes)))
+    for i in range(config.n_nodes):
+        for j in range(i, config.n_nodes):
+            if matrix[i, j] >= tolerance:  # TODO: check if > is correct
+                G.add_edge(i, j)
+    # reject the largets connected component
+    components = sorted(nx.connected_components(G), key=len, reverse=True)
+    components.pop(0)
+    # return remaining nodes as a list
+    nodes = []
+    for component in components:
+        nodes.extend(component)
+
+    if nodes != []:
+        return nodes
+    else:
+        return graph_selector(weights_list, size, tolerance *1.1)
+
+    # for gn in nx.connected_components(G):
+    #     if len(gn) >= size:
+    #         sized_components.append(gn)
+
+    # if len(sized_components) != 0:
+    #     return random.choice(sized_components)
+
+    # # TODO: fix this line
+    # return graph_selector(sim_matrix, size, tolerance * 0.9)
+
+
 model: Models = get_model(
     config.model_name,
     config.dataset,
@@ -91,8 +160,7 @@ while True:
 
     # if config.random_node_selection:
     #     node_subset = np.random.choice(
-    #         range(config.n_nodes), config.n_nodes_in_each_round, replace=False
-    #     )
+    #         range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
     # else:
     #     node_subset = range(0, config.n_nodes_in_each_round)
 
