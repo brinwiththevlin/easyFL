@@ -44,6 +44,7 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     config.n_nodes = clients
     config.n_nodes_in_each_round = per_round
     config.similarity = similarity
+    config.set_results_file_path()
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
     torch.manual_seed(config.seed)  # cpu
