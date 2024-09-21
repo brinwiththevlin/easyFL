@@ -16,11 +16,27 @@ import numpy as np
 import random
 import copy
 
+
+class DatasetSplit(Dataset):
+    def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
+        self.dataset = dataset
+        self.idxs = list(idxs)
+
+    def __len__(self):
+        return len(self.idxs)
+
+    def __getitem__(self, item: int):
+        image, label = self.dataset[self.idxs[item]]
+        return image, label
+
+
 @click.command()
 @click.option("--iid", is_flag=True, help="set to true if the data is to be iid")
 @click.option("--clients", default=10, help="total number of clients")
 @click.option("--per_round", default=5, help="clints to select per roound")
-@click.option("--similarity", default="cosine", type=click.Choice(['cosine','euclid','kernel']))
+@click.option(
+    "--similarity", default="cosine", type=click.Choice(["cosine", "euclid", "kernel"])
+)
 def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> None:
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
@@ -30,9 +46,14 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     config.similarity = similarity
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
-    # torch.manual_seed(config.seed)  # cpu
+    torch.manual_seed(config.seed)  # cpu
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
+
+    if config.device.type == "cuda":
+        torch.set_default_tensor_type(torch.cuda)
+    else:
+        torch.set_default_tensor_type(torch.FloatTensor)
 
     data_train, data_test = load_data(
         config.dataset, config.dataset_file_path, config.model_name
@@ -48,20 +69,6 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     if config.n_nodes is None:
         config.n_nodes = len(dict_users)
 
-
-    class DatasetSplit(Dataset):
-        def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
-            self.dataset = dataset
-            self.idxs = list(idxs)
-
-        def __len__(self):
-            return len(self.idxs)
-
-        def __getitem__(self, item: int):
-            image, label = self.dataset[self.idxs[item]]
-            return image, label
-
-
     model: Models = get_model(
         config.model_name,
         config.dataset,
@@ -74,7 +81,9 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     stat = CollectStatistics(results_file_name=config.fl_results_file_path)
     train_loader_list = []
     dataiter_list = []
-    weight_list: list[torch.Tensor | dict] = [torch.empty(0) for _ in range(config.n_nodes)]
+    weight_list: list[torch.Tensor | dict] = [
+        torch.empty(0) for _ in range(config.n_nodes)
+    ]
     for n in range(config.n_nodes):
         train_loader_list.append(
             DataLoader(
@@ -177,7 +186,9 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
         else:
             assert isinstance(w_global, dict)
             for k in w_global.keys():
-                if (True in torch.isnan(w_global[k])) or (True in torch.isinf(w_global[k])):  # type: ignore
+                if (True in torch.isnan(w_global[k])) or (
+                    True in torch.isinf(w_global[k])
+                ):  # type: ignore
                     has_nan = True
         if has_nan:
             print("*** w_global is NaN or InF, using previous value")
@@ -195,6 +206,6 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     stat.collect_stat_end()
     generate_figures()
 
+
 if __name__ == "__main__":
     main()
-
