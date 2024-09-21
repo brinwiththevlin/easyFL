@@ -23,27 +23,25 @@ def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
     )  # Ensure it returns a scalar as a float
     return float(dot_product)
 
-    # return temp1.dot(temp2)
-    # enc_v1 = ts.ckks_vector(context, temp1)
-    # enc_v2 = ts.ckks_vector(context, temp2)
 
-    # return enc_v1.dot(enc_v2).decrypt()[0]
+def euclid_sim(vector1: Tensor, vector2: Tensor) -> float:
+    """normalized euclid distance"""
+    temp: Tensor = vector1 - vector2
+    temp = (temp**2).sum()
+    return (1/(1 + temp)).item()
 
-
-def sum_of_squares(vector1: Tensor, vector2: Tensor) -> float:
-    return torch.sum((vector1 - vector2) ** 2).item()
-    # enc_v2 = ts.ckks_vector(context, vector2)
-    # enc_v1 = ts.ckks_vector(context, vector1)
-    #
-    # return (enc_v1 - enc_v2).square().sum().decrypt()[0]
-
-
-sim_functions = {"cosine": cosine_sim, "sos": sum_of_squares}
+def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None) -> float:
+    """uses radial baisis kernel (gaussian)"""
+    if gamma is None:
+        gamma = 1.0 / len(vector1)  # Default gamma
+    diff = vector1 - vector2
+    return torch.exp(-gamma * torch.dot(diff, diff)).item()
 
 
-def sim_matrix(
-    weights_list: list[Tensor], similarity: Callable[[Tensor, Tensor], float]
-) -> np.ndarray:
+sim_functions = {"cosine": cosine_sim, "euclid": euclid_sim, "kernel": kernel_sim}
+
+
+def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
     assert config.n_nodes is not None
     matrix = np.eye(config.n_nodes)
     for pair in combinations(enumerate(weights_list), 2):
@@ -51,12 +49,6 @@ def sim_matrix(
         values: list[Tensor] = [x[1] for x in pair]
         matrix[idx] = similarity(*values)
     return matrix
-    # matrix = matrix + matrix.T - np.diag(matrix.diagonal())
-    # # difference between max value and min value not counting diagonal, which should be 0
-    # diff = np.max(matrix) - \
-    #     np.min(matrix[~np.eye(matrix.shape[0], dtype=bool)])
-    # norm_matrix = matrix / diff
-    # return norm_matrix
 
 
 def graph_selector(
