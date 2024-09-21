@@ -31,6 +31,7 @@ class Config:
             os.path.dirname(__file__), "dataset_data_files"
         )
         self.results_file_path = os.path.join(os.path.dirname(__file__), "results/")
+        self.fl_results_file_path = ""
         # ----------------------settings for clients
         self.n_nodes: int | None = (
             100  # None for fmnist and celeba, set a number for others

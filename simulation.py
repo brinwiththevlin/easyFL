@@ -51,10 +51,6 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
 
-    if config.device.type == "cuda":
-        torch.set_default_tensor_type(torch.cuda)
-    else:
-        torch.set_default_tensor_type(torch.FloatTensor)
 
     data_train, data_test = load_data(
         config.dataset, config.dataset_file_path, config.model_name

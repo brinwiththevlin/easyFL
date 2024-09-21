@@ -17,9 +17,10 @@ def generate_figures(results_file_name: str = config.fl_results_file_path):
             labels={"x": "iterations", "y": metric},
             title=f"{metric} over time",
         )
-        png_file = f"{metric}_over_time_{results_file_name}.png"
+        results_file_name = results_file_name.removesuffix('.csv')
+        png_file = f"{results_file_name}_{metric}_over_time.png"
         fig.write_image(png_file)
-        print(f"FIgure saved as {png_file}")
+        print(f"Figure saved as {png_file}")
 
         def is_wsl():
             """
