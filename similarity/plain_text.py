@@ -30,7 +30,7 @@ def euclid_sim(vector1: Tensor, vector2: Tensor) -> float:
     temp = (temp**2).sum()
     return (1/(1 + temp)).item()
 
-def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None) -> float:
+def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None= None) -> float:
     """uses radial baisis kernel (gaussian)"""
     if gamma is None:
         gamma = 1.0 / len(vector1)  # Default gamma

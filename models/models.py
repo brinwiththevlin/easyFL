@@ -235,7 +235,7 @@ class Models:
 
         self.model.eval()
         total_correct = 0
-        avg_loss : Tensor = torch.empty((1,))
+        avg_loss : Tensor = torch.empty((1,)).to(device)
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = (
