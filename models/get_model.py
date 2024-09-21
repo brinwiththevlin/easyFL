@@ -3,17 +3,16 @@ import torch
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 def get_model(
-    model_name,
-    dataset,
-    rand_seed=None,
-    step_size=0.001,
-    device=torch.device("cuda"),
-    flatten_weight=False,
+    model_name: str,
+    dataset: str,
+    rand_seed: int | None = None,
+    step_size: float=0.001,
+    device: torch.device =torch.device("cuda"),
+    flatten_weight: bool=False,
 ):
     img_size, channels, num_classes = get_data_info(dataset, model_name)
 

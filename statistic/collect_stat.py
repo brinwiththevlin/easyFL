@@ -1,3 +1,4 @@
+from torch import Tensor
 from torch.utils.data import DataLoader
 from models.models import Models
 from tensorboardX import SummaryWriter
@@ -9,7 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 
 class CollectStatistics:
-    def __init__(self, results_file_name=os.path.dirname(__file__) + "/results.csv"):
+    def __init__(
+        self, results_file_name: str = os.path.dirname(__file__) + "/results.csv"
+    ):
         self.results_file_name = results_file_name
         self.summary_write = SummaryWriter(
             log_dir=os.path.join(config.results_file_path, config.comments)
@@ -22,7 +25,7 @@ class CollectStatistics:
         )
 
         with open(results_file_name, "a") as f:
-            f.write("num_iter,lossValue,trainAccuracy,predictionAccuracy\n")
+            f.write("num_iter,lossValue,trainAccuracy,predictionAccuracy,predictionPrecision,predictionRecall,predictionF1\n")
             f.close()
 
     def collect_stat_global(
@@ -31,7 +34,7 @@ class CollectStatistics:
         model: Models,
         train_data_loader: DataLoader,
         test_data_loader: DataLoader,
-        w_global=None,
+        w_global: Tensor | dict[str, Tensor] | None = None,
     ):
         loss_value, train_accuracy = model.accuracy(
             train_data_loader, w_global, config.device
@@ -43,12 +46,7 @@ class CollectStatistics:
             test_data_loader, w_global, config.device
         )
         prediction_recall = model.recall(test_data_loader, w_global, config.device)
-        prediction_f1 = (
-            prediction_precision
-            * prediction_recall
-            * 2
-            / (prediction_precision + prediction_recall)
-        )
+        prediction_f1 = model.f1(test_data_loader, w_global, config.device)
 
         self.summary_write.add_scalar("Loss", loss_value, num_iter)
         self.summary_write_train.add_scalar("Accuracy", train_accuracy, num_iter)

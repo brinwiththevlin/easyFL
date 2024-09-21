@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 
 import torch
@@ -30,26 +31,25 @@ class Config:
             os.path.dirname(__file__), "dataset_data_files")
         self.results_file_path = os.path.join(
             os.path.dirname(__file__), "results/")
-        self.comments = self.dataset + "-" + self.model_name
+        self.comments = self.dataset + "-" + self.model_name + datetime.now().strftime("%m-%d %H:%M:%S")
         self.fl_results_file_path = os.path.join(
             self.results_file_path, "rst_" + self.comments + ".csv")
         # ----------------------settings for clients
-        self.n_nodes = 10  # None for fmnist and celeba, set a number for others
-        self.n_nodes_in_each_round = 5
+        self.n_nodes : int | None= 100  # None for fmnist and celeba, set a number for others
+        self.n_nodes_in_each_round = 50
         self.step_size = 0.01  # learning rate of clients
         self.batch_size_train = 32
         self.batch_size_eval = 256
-        self.max_iter = 100000  # Maximum number of iterations to run
+        self.max_iter = 1000  # Maximum number of iterations to run
         self.seed = 1
         self.aggregation_method = "FedAvg"
         self.random_node_selection = True
         self.flatten_weight = True
-        # self.iid = True  # only for MNIST and CIFAR*
         # self.iid = True
         self.iid = False
         self.tau_setup = 10  # number of iterations in local training
         self.num_iter_one_output = 50
-        self.tolerance = 0.995
+        self.tolerance = 0.9995 if self.iid else 0.7
         self.similarity = "cosine"
 
 

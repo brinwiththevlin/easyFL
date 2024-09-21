@@ -1,3 +1,4 @@
+from torch.functional import Tensor
 import torch.nn as nn
 import os
 import sys
@@ -33,7 +34,7 @@ class ModelCNNEmnist(nn.Module):
         self.fc1 = nn.Linear(7 * 7 * 64, 2048)
         self.fc2 = nn.Linear(2048, 62)
 
-    def forward(self, x, out_activation=False):
+    def forward(self, x: Tensor, out_activation: bool =False):
         conv1_ = self.conv1(x)
         conv2_ = self.conv2(conv1_)
         fc_ = conv2_.view(-1, 64*7*7)

@@ -1,3 +1,4 @@
+from typing import Callable
 from torchvision.datasets import VisionDataset
 from PIL import Image
 import os.path
@@ -5,23 +6,31 @@ import json
 
 
 class CelebA(VisionDataset):
-
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 download=False, read_all_data_to_mem=True):
-        super(CelebA, self).__init__(root, transform=transform,
-                                    target_transform=target_transform)
+    def __init__(
+        self,
+        root: str,
+        train: bool = True,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
+        read_all_data_to_mem: bool = True,
+    ):
+        super(CelebA, self).__init__(
+            root, transform=transform, target_transform=target_transform
+        )
         self.train = train
         self.read_all_data_to_mem = read_all_data_to_mem
 
-        self.train_data_dir = os.path.join(root, 'train')
-        self.test_data_dir = os.path.join(root, 'test')
-        self.raw_data_dir = os.path.join(root, 'raw', 'img_align_celeba')
+        self.train_data_dir = os.path.join(root, "train")
+        self.test_data_dir = os.path.join(root, "test")
+        self.raw_data_dir = os.path.join(root, "raw", "img_align_celeba")
 
         if not self._check_exists():
-            raise RuntimeError('Dataset not found. Please download img_align_celeba.zip from '
-                               'http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html and put it into dataset_files/celeba/raw. '
-                               'Then, extract the files into the same folder. The standalone jpg files should be located '
-                               'in dataset_files/celeba/raw/img_align_celeba after extraction.')
+            raise RuntimeError(
+                "Dataset not found. Please download img_align_celeba.zip from "
+                "http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html and put it into dataset_files/celeba/raw. "
+                "Then, extract the files into the same folder. The standalone jpg files should be located "
+                "in dataset_files/celeba/raw/img_align_celeba after extraction."
+            )
 
         if self.train:
             data_dir = self.train_data_dir
@@ -32,12 +41,12 @@ class CelebA(VisionDataset):
 
         data = {}
 
-        data_files = [f for f in data_files if f.endswith('.json')]
+        data_files = [f for f in data_files if f.endswith(".json")]
         for f in data_files:
             file_path = os.path.join(data_dir, f)
-            with open(file_path, 'r') as inf:
+            with open(file_path, "r") as inf:
                 cdata = json.load(inf)
-            data.update(cdata['user_data'])
+            data.update(cdata["user_data"])
 
         list_keys = list(data.keys())
         self.images = []
@@ -59,12 +68,12 @@ class CelebA(VisionDataset):
 
             self.targets += data[list_keys[i]]["y"]
 
-            for j in range(0, len(data[list_keys[i]]["x"])):
+            for _ in range(0, len(data[list_keys[i]]["x"])):
                 self.clients.append(i)
 
-        print('')
+        print("")
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         img, target = self.images[index], int(self.targets[index])
         if not self.read_all_data_to_mem:
             img = Image.open(os.path.join(self.raw_data_dir, img))
@@ -93,8 +102,11 @@ class CelebA(VisionDataset):
         return dict_clients
 
     def download(self):
-        raise Exception('Download currently not supported.')
+        raise Exception("Download currently not supported.")
 
     def _check_exists(self):
-        return os.path.exists(self.train_data_dir) and os.path.exists(self.test_data_dir) \
-               and os.path.exists(self.raw_data_dir)
+        return (
+            os.path.exists(self.train_data_dir)
+            and os.path.exists(self.test_data_dir)
+            and os.path.exists(self.raw_data_dir)
+        )

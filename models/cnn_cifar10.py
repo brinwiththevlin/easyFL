@@ -1,3 +1,4 @@
+from torch.functional import Tensor
 import torch.nn as nn
 import os
 import sys
@@ -35,7 +36,7 @@ class ModelCNNCifar10(nn.Module):
         self.fc1 = nn.Linear(8 * 8 * 32, 256)
         self.fc2 = nn.Linear(256, 10)
 
-    def forward(self, x, out_activation=False):
+    def forward(self, x: Tensor, out_activation: bool=False):
         conv1_ = self.conv1(x)
         conv2_ = self.conv2(conv1_)
         fc_ = conv2_.view(-1, 32*8*8)

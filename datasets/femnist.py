@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import Callable
 from torchvision.datasets import VisionDataset
 from PIL import Image
 import os.path
@@ -6,18 +8,23 @@ import numpy as np
 
 
 class FEMNIST(VisionDataset):
-
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 download=False):
-        super(FEMNIST, self).__init__(root, transform=transform,
-                                    target_transform=target_transform)
+    def __init__(
+        self,
+        root: str | Path,
+        train: bool = True,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
+    ):
+        super(FEMNIST, self).__init__(
+            root, transform=transform, target_transform=target_transform
+        )
         self.train = train
 
-        self.train_data_dir = os.path.join(root, 'train')
-        self.test_data_dir = os.path.join(root, 'test')
+        self.train_data_dir = os.path.join(root, "train")
+        self.test_data_dir = os.path.join(root, "test")
 
         if not self._check_exists():
-            raise RuntimeError('Dataset not found.')
+            raise RuntimeError("Dataset not found.")
 
         if self.train:
             data_dir = self.train_data_dir
@@ -28,12 +35,12 @@ class FEMNIST(VisionDataset):
 
         data = {}
 
-        data_files = [f for f in data_files if f.endswith('.json')]
+        data_files = [f for f in data_files if f.endswith(".json")]
         for f in data_files:
             file_path = os.path.join(data_dir, f)
-            with open(file_path, 'r') as inf:
+            with open(file_path, "r") as inf:
                 cdata = json.load(inf)
-            data.update(cdata['user_data'])
+            data.update(cdata["user_data"])
 
         list_keys = list(data.keys())
         self.images = []
@@ -46,8 +53,8 @@ class FEMNIST(VisionDataset):
             targets = data[list_keys[i]]["y"]
 
             for img in imgs:
-                img = np.array(img, dtype='float32').reshape(28, 28)
-                img = Image.fromarray(img, mode='F')
+                img = np.array(img, dtype="float32").reshape(28, 28)
+                img = Image.fromarray(img, mode="F")
                 if self.transform is not None:
                     img = self.transform(img)
 
@@ -55,10 +62,10 @@ class FEMNIST(VisionDataset):
 
             self.targets += targets
 
-            for j in range(0, len(data[list_keys[i]]["x"])):
+            for _ in range(0, len(data[list_keys[i]]["x"])):
                 self.clients.append(i)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         img, target = self.images[index], int(self.targets[index])
 
         if self.target_transform is not None:
@@ -82,7 +89,9 @@ class FEMNIST(VisionDataset):
         return dict_clients
 
     def download(self):
-        raise Exception('Download currently not supported')
+        raise Exception("Download currently not supported")
 
     def _check_exists(self):
-        return os.path.exists(self.train_data_dir) and os.path.exists(self.test_data_dir)
+        return os.path.exists(self.train_data_dir) and os.path.exists(
+            self.test_data_dir
+        )

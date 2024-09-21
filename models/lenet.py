@@ -8,11 +8,11 @@
 
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from torch.functional import Tensor
 import torch.nn as nn
 
 
 class LeNet5(nn.Module):
-
     def __init__(self):
         super(LeNet5, self).__init__()
 
@@ -28,7 +28,9 @@ class LeNet5(nn.Module):
         self.relu4 = nn.ReLU()
         self.fc2 = nn.Linear(84, 10)
 
-    def forward(self, img, out_feature=False, out_activation=False):
+    def forward(
+        self, img: Tensor, out_feature: bool = False, out_activation: bool = False
+    ):
         activation1 = self.conv1(img)
         output = self.relu1(activation1)
         output = self.maxpool1(output)
@@ -41,17 +43,16 @@ class LeNet5(nn.Module):
         output = self.fc1(feature)
         output = self.relu4(output)
         output = self.fc2(output)
-        if out_feature == False:
+        if not out_feature:
             return output
         else:
-            if out_activation == True:
+            if out_activation:
                 return output, feature, activation1, activation2, activation3
             else:
                 return output, feature
 
 
 class LeNet5Half(nn.Module):
-
     def __init__(self):
         super(LeNet5Half, self).__init__()
 
@@ -68,7 +69,9 @@ class LeNet5Half(nn.Module):
         self.fc2 = nn.Linear(42, 10)
 
     # [batch_size, 1, 32, 32]
-    def forward(self, img, out_feature=False, out_activation=False):
+    def forward(
+        self, img: Tensor, out_feature: bool = False, out_activation: bool = False
+    ):
         activation1 = self.conv1(img)  # [batch_size, 3, 28, 28]
         output = self.relu1(activation1)  # [batch_size, 3, 28, 28]
         output = self.maxpool1(output)  # [batch_size, 3, 14, 14]
@@ -81,10 +84,10 @@ class LeNet5Half(nn.Module):
         output = self.fc1(feature)  # [batch_size, 42]
         output = self.relu4(output)
         output = self.fc2(output)  # [batch_size, 10]
-        if out_feature == False:
+        if not out_feature:
             return output
         else:
-            if out_activation == True:
+            if out_activation:
                 return output, feature, activation1, activation2, activation3
             else:
                 return output, feature

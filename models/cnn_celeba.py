@@ -1,3 +1,4 @@
+from torch.functional import Tensor
 import torch.nn as nn
 import os
 import sys
@@ -59,7 +60,7 @@ class ModelCNNCeleba(nn.Module):
 
         self.fc = nn.Linear(1152, 2)
 
-    def forward(self, x, out_activation=False):
+    def forward(self, x: Tensor, out_activation: bool=False):
         output1 = self.conv1(x)
         output2 = self.conv2(output1)
         output3 = self.conv3(output2)

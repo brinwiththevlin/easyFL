@@ -1,15 +1,16 @@
 # Part of this code is inspired by https://github.com/IBM/adaptive-federated-learning
 
+from typing import Iterable
 from torch.utils.data import Dataset, DataLoader
-import networkx as nx
-from itertools import combinations
 import torch
+from torchvision.datasets import VisionDataset
 from config import config
 from similarity.plain_text import graph_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
 from models.models import Models
 from statistic.collect_stat import CollectStatistics
+from statistic.figure import generate_figures
 from util.sampling import split_data
 import numpy as np
 import random
@@ -37,83 +38,16 @@ if config.n_nodes is None:
 
 
 class DatasetSplit(Dataset):
-    def __init__(self, dataset, idxs):
+    def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
         self.dataset = dataset
         self.idxs = list(idxs)
 
     def __len__(self):
         return len(self.idxs)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int):
         image, label = self.dataset[self.idxs[item]]
         return image, label
-
-
-def cosine_sim(vector1, vector2):
-    temp1 = vector1 / torch.norm(vector1)
-    temp2 = vector2 / torch.norm(vector2)
-
-    return temp1.dot(temp2)
-
-    # return temp1.dot(temp2)
-    # enc_v1 = ts.ckks_vector(context, temp1)
-    # enc_v2 = ts.ckks_vector(context, temp2)
-
-    # return enc_v1.dot(enc_v2).decrypt()[0]
-
-
-def sum_of_squares(vector1, vector2):
-    return torch.sum((vector1 - vector2) ** 2)
-    # enc_v2 = ts.ckks_vector(context, vector2)
-    # enc_v1 = ts.ckks_vector(context, vector1)
-    #
-    # return (enc_v1 - enc_v2).square().sum().decrypt()[0]
-
-
-def sim_matrix(weights_list):
-    matrix = np.eye(config.n_nodes)
-    for pair in combinations(enumerate(weights_list), 2):
-        idx, values = zip(*pair)
-        matrix[idx] = cosine_sim(*values)
-    return matrix
-    # matrix = matrix + matrix.T - np.diag(matrix.diagonal())
-    # # difference between max value and min value not counting diagonal, which should be 0
-    # diff = np.max(matrix) - \
-    #     np.min(matrix[~np.eye(matrix.shape[0], dtype=bool)])
-    # norm_matrix = matrix / diff
-    # return norm_matrix
-
-
-def graph_selector(weights_list, size, tolerance):
-    matrix = sim_matrix(weights_list)
-    G = nx.Graph()
-    G.add_nodes_from(list(range(config.n_nodes)))
-    for i in range(config.n_nodes):
-        for j in range(i, config.n_nodes):
-            if matrix[i, j] >= tolerance:  # TODO: check if > is correct
-                G.add_edge(i, j)
-    # reject the largets connected component
-    components = sorted(nx.connected_components(G), key=len, reverse=True)
-    components.pop(0)
-    # return remaining nodes as a list
-    nodes = []
-    for component in components:
-        nodes.extend(component)
-
-    if nodes != []:
-        return nodes
-    else:
-        return graph_selector(weights_list, size, tolerance *1.1)
-
-    # for gn in nx.connected_components(G):
-    #     if len(gn) >= size:
-    #         sized_components.append(gn)
-
-    # if len(sized_components) != 0:
-    #     return random.choice(sized_components)
-
-    # # TODO: fix this line
-    # return graph_selector(sim_matrix, size, tolerance * 0.9)
 
 
 model: Models = get_model(
@@ -139,7 +73,7 @@ for n in range(config.n_nodes):
     )
     dataiter_list.append(iter(train_loader_list[n]))
 
-w_global_init = model.get_weight()
+w_global_init: torch.Tensor | dict[str, torch.Tensor] = model.get_weight()
 w_global = copy.deepcopy(w_global_init)
 
 num_iter = 0
@@ -155,7 +89,9 @@ while True:
         first = False
     else:
         node_subset = graph_selector(
-            weight_list, config.n_nodes_in_each_round, config.tolerance
+            weight_list,  # type: ignore
+            config.n_nodes_in_each_round,
+            config.tolerance,
         )
 
     # if config.random_node_selection:
@@ -214,7 +150,7 @@ while True:
             assert isinstance(w_accu, dict)
             assert isinstance(w_global, dict)
             for k in w_global.keys():
-                w_global[k] = torch.div(
+                w_global[k] = torch.div(  # type: ignore
                     copy.deepcopy(w_accu[k]),
                     torch.tensor(config.n_nodes_in_each_round).to(config.device),
                 )
@@ -229,7 +165,7 @@ while True:
     else:
         assert isinstance(w_global, dict)
         for k in w_global.keys():
-            if (True in torch.isnan(w_global[k])) or (True in torch.isinf(w_global[k])):
+            if (True in torch.isnan(w_global[k])) or (True in torch.isinf(w_global[k])):  # type: ignore
                 has_nan = True
     if has_nan:
         print("*** w_global is NaN or InF, using previous value")
@@ -245,3 +181,4 @@ while True:
         break
 
 stat.collect_stat_end()
+generate_figures()

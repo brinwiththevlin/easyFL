@@ -1,8 +1,11 @@
 import copy
-from typing import Optional
+from typing import Any, Sequence
 from torch.autograd import Variable
 import torch
-from torch import nn
+from torch.optim.sgd import SGD
+from torch import device, nn
+from torch.functional import Tensor
+from torch.utils.data import DataLoader
 from models.wresnet import WideResNet
 from models.lenet import LeNet5
 from models.resnet import ResNet34, ResNet18
@@ -20,18 +23,21 @@ LOSS_ACC_BATCH_SIZE = 128
 class Models:
     def __init__(
         self,
-        rand_seed: Optional[int] = None,
+        rand_seed: int | None = None,
         learning_rate: float = 0.001,
         num_classes: int = 10,
         model_name: str = "LeNet5",
         channels: int = 1,
         img_size: int = 32,
-        device: torch.device = torch.device("cuda"),
+        device: torch.device | None = None,
         flatten_weight: bool = False,
     ):
         super(Models, self).__init__()
+        if device is None:
+            device = torch.device("cuda")
+
         if rand_seed is not None:
-            torch.manual_seed(rand_seed)
+            _ = torch.manual_seed(rand_seed)
         self.weights_key_list = []
         self.weights_size_list = []
         self.weights_num_list = []
@@ -39,6 +45,7 @@ class Models:
         self.img_size = img_size
         self.flatten_weight = flatten_weight
         self.learning_rate = learning_rate
+        # self.model: nn.Module | None = None
 
         if model_name == "ModelCNNMnist":
             from models.cnn_mnist import ModelCNNMnist
@@ -82,25 +89,27 @@ class Models:
                 depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0
             )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        else:
+            raise ValueError(f"model_name {model_name} is not supported")
 
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
-        self.model.to(device)
+        self.optimizer = SGD(self.model.parameters(), lr=learning_rate)
+        _ = self.model.to(device)
         self.loss_fn = nn.CrossEntropyLoss().to(device)
         self._get_weight_info()
 
-    def weight_variable(self, tensor, mean, std):
+    def weight_variable(self, tensor: Tensor, mean: float, std: float) -> Tensor:
         size = tensor.shape
         tmp = tensor.new_empty(size + (4,)).normal_()
         valid = (tmp < 2) & (tmp > -2)
         ind = valid.max(-1, keepdim=True)[1]
-        tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
-        tensor.data.mul_(std).add_(mean)
+        _ = tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
+        _ = tensor.data.mul_(std).add_(mean)
         return tensor
 
-    def bias_variable(self, shape):
+    def bias_variable(self, shape: Sequence[int]) -> Tensor:
         return torch.ones(shape) * 0.1
 
-    def init_variables(self):
+    def init_variables(self) -> None:
         self._get_weight_info()
 
         weight_dic = collections.OrderedDict()
@@ -115,7 +124,7 @@ class Models:
 
         self.model.load_state_dict(weight_dic)
 
-    def _get_weight_info(self):
+    def _get_weight_info(self) -> None:
         self.weights_key_list = []
         self.weights_size_list = []
         self.weights_num_list = []
@@ -130,11 +139,11 @@ class Models:
                 num_w = 0
             self.weights_num_list.append(num_w)
 
-    def get_weight_dimension(self):
+    def get_weight_dimension(self) -> int:
         dim = sum(self.weights_num_list)
         return dim
 
-    def get_weight(self):
+    def get_weight(self) -> Tensor | dict[str, Tensor]:
         with torch.no_grad():
             state = self.model.state_dict()
             if self.flatten_weight:
@@ -152,13 +161,15 @@ class Models:
             else:
                 return copy.deepcopy(state)
 
-    def assign_weight(self, w):
+    def assign_weight(self, w: Tensor | dict[str, Any]) -> None:
         if self.flatten_weight:
+            assert isinstance(w, Tensor)
             self.assign_flattened_weight(w)
         else:
+            assert isinstance(w, dict)
             self.model.load_state_dict(w)
 
-    def assign_flattened_weight(self, w):
+    def assign_flattened_weight(self, w: Tensor) -> None:
         weight_dic = collections.OrderedDict()
         start_index = 0
 
@@ -173,7 +184,9 @@ class Models:
             start_index += self.weights_num_list[i]
         self.model.load_state_dict(weight_dic)
 
-    def _data_reshape(self, imgs, labels=None):
+    def _data_reshape(
+        self, imgs: Tensor, labels: Tensor | None = None
+    ) -> tuple[Tensor, Tensor | None]:
         if len(imgs.size()) < 3:
             x_image = imgs.view([-1, self.channels, self.img_size, self.img_size])
             if labels is not None:
@@ -185,7 +198,14 @@ class Models:
         else:
             return imgs, labels
 
-    def gradient(self, imgs, labels, w, sampleIndices, device):
+    def gradient(
+        self,
+        imgs: Tensor,
+        labels: Tensor,
+        w: Tensor | dict[str, Tensor],
+        sampleIndices: Sequence[int] | None,
+        device: torch.device,
+    ) -> Tensor | dict[str, Tensor]:
         self.assign_weight(w)
 
         if sampleIndices is None:
@@ -194,7 +214,7 @@ class Models:
         imgs = imgs[sampleIndices].to(device)
         labels = labels[sampleIndices].to(device)
 
-        imgs, labels = self._data_reshape(imgs, labels)
+        imgs, labels = self._data_reshape(imgs, labels) #type: ignore
 
         self.model.train()
         self.optimizer.zero_grad()
@@ -204,13 +224,18 @@ class Models:
 
         return self.get_weight()
 
-    def accuracy(self, data_test_loader, w, device):
+    def accuracy(
+        self,
+        data_test_loader: DataLoader,
+        w: Tensor | dict[str, Tensor] | None,
+        device: device,
+    ) -> tuple[float, float]:
         if w is not None:
             self.assign_weight(w)
 
         self.model.eval()
         total_correct = 0
-        avg_loss = 0.0
+        avg_loss : Tensor = torch.empty((1,))
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = (
@@ -221,64 +246,77 @@ class Models:
                 avg_loss += self.loss_fn(output, labels).sum()
                 pred = output.data.max(1)[1]
                 total_correct += pred.eq(labels.data.view_as(pred)).sum()
-        avg_loss /= len(data_test_loader.dataset)
-        acc = float(total_correct) / len(data_test_loader.dataset)
+        avg_loss /= len(data_test_loader.dataset)  # type: ignore
+        acc = float(total_correct) / len(data_test_loader.dataset)  # type: ignore
 
-        return avg_loss, acc
+        return round(avg_loss.item(), 3), round(acc, 3)
 
-    def precision(self, data_test_loader, w, device, positive_class=1):
+    def precision(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
         if w is not None:
             self.assign_weight(w)
 
         self.model.eval()
         true_positive = 0
         false_positive = 0
+
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = images.to(device), labels.to(device)
                 output = self.model(images)
-                pred = output.data.max(1)[1]
+                pred = output.data.max(1)[1]  # Get the predicted class
 
-                # Check true positives and false positives for the positive class
-                true_positive += (pred == positive_class).long().sum()
-                false_positive += (
-                    ((pred == positive_class) & (labels != positive_class)).long().sum()
-                )
+                # Calculate the true positives (correctly classified samples)
+                true_positive += (pred == labels).sum().item()
 
-        precision = (
-            float(true_positive) / (true_positive + false_positive)
-            if (true_positive + false_positive) > 0
-            else 0.0
-        )
+                # Calculate the false positives (incorrectly classified samples)
+                false_positive += (pred != labels).sum().item()
 
-        return precision
+        try:
+            precision = true_positive / (true_positive + false_positive)
+        except ZeroDivisionError:
+            precision = 0.0
 
-    def recall(self, data_test_loader, w, device, positive_class=1):
+        return round(precision, 3)
+
+    def recall(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
         if w is not None:
             self.assign_weight(w)
 
         self.model.eval()
         true_positive = 0
-        total_actual_positive: int = 0
+        total_actual_positive = 0
+
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = images.to(device), labels.to(device)
                 output = self.model(images)
-                pred = output.data.max(1)[1]
+                pred = output.data.max(1)[1]  # Get the predicted class
 
-                # Check true positives and total actual positives for the positive class
-                true_positive += (pred == positive_class).long().sum()
-                total_actual_positive += (labels == positive_class).long().sum()
+                # Calculate the true positives (correctly classified samples)
+                true_positive += (pred == labels).sum().item()
 
-        recall = (
-            float(true_positive) / total_actual_positive
-            if total_actual_positive > 0
-            else 0.0
-        )
+                # Total actual positives (total number of samples)
+                total_actual_positive += labels.size(0)
 
-        return recall
+        try:
+            recall = true_positive / total_actual_positive
+        except ZeroDivisionError:
+            recall = 0.0
 
-    def predict(self, img, w, device):
+        return round(recall, 3)
+
+    def f1(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
+        precision = self.precision(data_test_loader, w, device)
+        recall = self.recall(data_test_loader, w, device)
+        try:
+            f1 = (precision * recall) / (precision + recall)
+        except ZeroDivisionError:
+            f1 = 0.0
+        return round(f1, 3)
+
+    def predict(
+        self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device
+    ) -> Tensor:
         self.assign_weight(w)
         img, _ = self._data_reshape(img)
         with torch.no_grad():
@@ -287,7 +325,9 @@ class Models:
 
         return pred
 
-    def train_one_epoch(self, data_train_loader, device):
+    def train_one_epoch(
+        self, data_train_loader: DataLoader, device: torch.device
+    ) -> None:
         self.model.train()
         for _, (images, labels) in enumerate(data_train_loader):
             images, labels = Variable(images).to(device), Variable(labels).to(device)
