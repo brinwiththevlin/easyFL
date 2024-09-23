@@ -214,7 +214,7 @@ class Models:
         imgs = imgs[sampleIndices].to(device)
         labels = labels[sampleIndices].to(device)
 
-        imgs, labels = self._data_reshape(imgs, labels) #type: ignore
+        imgs, labels = self._data_reshape(imgs, labels)  # type: ignore
 
         self.model.train()
         self.optimizer.zero_grad()
@@ -235,7 +235,7 @@ class Models:
 
         self.model.eval()
         total_correct = 0
-        avg_loss : Tensor = torch.empty((1,)).to(device)
+        avg_loss: Tensor = torch.empty((1,)).to(device)
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = (
@@ -251,7 +251,12 @@ class Models:
 
         return round(avg_loss.item(), 3), round(acc, 3)
 
-    def precision(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
+    def precision(
+        self,
+        data_test_loader: DataLoader,
+        w: Tensor | dict[str, Tensor] | None,
+        device: torch.device,
+    ) -> float:
         if w is not None:
             self.assign_weight(w)
 
@@ -278,7 +283,12 @@ class Models:
 
         return round(precision, 3)
 
-    def recall(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
+    def recall(
+        self,
+        data_test_loader: DataLoader,
+        w: Tensor | dict[str, Tensor] | None,
+        device: torch.device,
+    ) -> float:
         if w is not None:
             self.assign_weight(w)
 
@@ -305,11 +315,16 @@ class Models:
 
         return round(recall, 3)
 
-    def f1(self, data_test_loader: DataLoader, w: Tensor | dict[str, Tensor] | None, device: torch.device) -> float:
+    def f1(
+        self,
+        data_test_loader: DataLoader,
+        w: Tensor | dict[str, Tensor] | None,
+        device: torch.device,
+    ) -> float:
         precision = self.precision(data_test_loader, w, device)
         recall = self.recall(data_test_loader, w, device)
         try:
-            f1 = (precision * recall) / (precision + recall)
+            f1 = (2 * precision * recall) / (precision + recall)
         except ZeroDivisionError:
             f1 = 0.0
         return round(f1, 3)

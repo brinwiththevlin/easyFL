@@ -31,26 +31,39 @@ class DatasetSplit(Dataset):
 
 
 @click.command()
+@click.option("--iterations", default=1000, help="number of global iterations")
 @click.option("--iid", is_flag=True, help="set to true if the data is to be iid")
 @click.option("--clients", default=10, help="total number of clients")
-@click.option("--per_round", default=5, help="clints to select per roound")
+@click.option("--per_round", default=5, help="clints to select per round")
 @click.option(
     "--similarity", default="cosine", type=click.Choice(["cosine", "euclid", "kernel"])
 )
-def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> None:
+@click.option("--selection", default="graph", type=click.Choice(["graph", "random"]))
+@click.option("--res_path", default=None, help="path to save results")
+def main(
+    iterations: int,
+    iid: bool,
+    clients: int | None,
+    per_round: int,
+    similarity: str,
+    selection: str,
+    res_path: str | None,
+) -> None:
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
+    config.max_iter = iterations
     config.iid = iid
     config.n_nodes = clients
     config.n_nodes_in_each_round = per_round
     config.similarity = similarity
-    config.set_results_file_path()
+    config.set_results_file_path(res_path)
+    config.random_node_selection = selection == "random"
+
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
     torch.manual_seed(config.seed)  # cpu
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
-
 
     data_train, data_test = load_data(
         config.dataset, config.dataset_file_path, config.model_name
@@ -101,22 +114,20 @@ def main(iid: bool, clients: int | None, per_round: int, similarity: str) -> Non
     while True:
         w_global_prev = copy.deepcopy(w_global)
 
-        if first:
-            # TODO: figure out what to do the first round
-            node_subset = range(config.n_nodes)
-            first = False
-        else:
-            node_subset = graph_selector(
-                weight_list,  # type: ignore
-                config.n_nodes_in_each_round,
-                config.tolerance,
+        if config.random_node_selection:
+            node_subset = np.random.choice(
+                range(config.n_nodes), config.n_nodes_in_each_round, replace=False
             )
-
-        # if config.random_node_selection:
-        #     node_subset = np.random.choice(
-        #         range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
-        # else:
-        #     node_subset = range(0, config.n_nodes_in_each_round)
+        else:
+            if first:
+                node_subset = range(config.n_nodes)
+                first = False
+            else:
+                node_subset = graph_selector(
+                    weight_list,  # type: ignore
+                    config.n_nodes_in_each_round,
+                    config.tolerance,
+                )
 
         w_accu = None
         for n in node_subset:

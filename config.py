@@ -52,7 +52,7 @@ class Config:
         self.tolerance = 0.9995 if self.iid else 0.7
         self.similarity = "cosine"
 
-    def set_results_file_path(self):
+    def set_results_file_path(self, res_path: str| None) -> None:
         self.comments = (
             self.dataset
             + "-"
@@ -66,10 +66,14 @@ class Config:
             + "-"
             + self.similarity
             + "-"
+            + "-"
+            + "random" if self.random_node_selection else "graph"
             + datetime.now().strftime("%m-%d-%H:%M")
         )
+        if res_path:
+            self.results_file_path = os.path.join(self.results_file_path, res_path)
         self.fl_results_file_path = os.path.join(
-            self.results_file_path, "rst_" + self.comments + ".csv"
+            self.results_file_path, self.comments, "results.csv"
         )
 
 
