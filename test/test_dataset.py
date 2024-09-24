@@ -1,6 +1,6 @@
 from torch.utils.data import DataLoader
-from config import config
-from datasets.dataset import load_data
+from src.config import config
+from src.datasets.dataset import load_data
 import unittest
 import os
 import sys

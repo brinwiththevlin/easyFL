@@ -52,7 +52,7 @@ class Config:
         self.tolerance = 0.9995 if self.iid else 0.7
         self.similarity = "cosine"
 
-    def set_results_file_path(self, res_path: str| None) -> None:
+    def set_results_file_path(self, res_path: str | None) -> None:
         self.comments = (
             self.dataset
             + "-"
@@ -67,14 +67,33 @@ class Config:
             + self.similarity
             + "-"
             + "-"
-            + "random" if self.random_node_selection else "graph"
-            + datetime.now().strftime("%m-%d-%H:%M")
+            + "random"
+            if self.random_node_selection
+            else "graph" + datetime.now().strftime("%m-%d-%H:%M")
         )
         if res_path:
             self.results_file_path = os.path.join(self.results_file_path, res_path)
         self.fl_results_file_path = os.path.join(
             self.results_file_path, self.comments, "results.csv"
         )
+
+    def parse_args(
+        self,
+        iterations: int,
+        iid: int,
+        clients: int| None,
+        per_round: int,
+        similarity: str,
+        selection: str,
+        res_path: str | None,
+    ):
+        config.max_iter = iterations
+        config.iid = iid
+        config.n_nodes = clients
+        config.n_nodes_in_each_round = per_round
+        config.similarity = similarity
+        config.set_results_file_path(res_path)
+        config.random_node_selection = selection == "random"
 
 
 config = Config()

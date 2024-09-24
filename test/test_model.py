@@ -1,4 +1,4 @@
-from config import config
+from src.config import config
 from torch.utils.data import DataLoader
 from datasets.dataset import load_data
 from models.get_model import get_model

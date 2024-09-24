@@ -7,7 +7,7 @@ from itertools import combinations
 from typing import Callable
 
 from torch import Tensor
-from src.config import config
+from config import config
 
 
 def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:

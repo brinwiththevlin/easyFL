@@ -51,14 +51,10 @@ def main(
 ) -> None:
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
-    config.max_iter = iterations
-    config.iid = iid
-    config.n_nodes = clients
-    config.n_nodes_in_each_round = per_round
-    config.similarity = similarity
-    config.set_results_file_path(res_path)
-    config.random_node_selection = selection == "random"
 
+    config.parse_args(
+        iterations, iid, clients, per_round, similarity, selection, res_path
+    )
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
     torch.manual_seed(config.seed)  # cpu
