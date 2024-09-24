@@ -36,7 +36,7 @@ class DatasetSplit(Dataset):
 @click.option("--clients", default=10, help="total number of clients")
 @click.option("--per_round", default=5, help="clints to select per round")
 @click.option(
-    "--similarity", default="cosine", type=click.Choice(["cosine", "euclid", "kernel"])
+    "--similarity", default="cosine", type=click.Choice(["cosine", "pearson", "kernel"])
 )
 @click.option("--selection", default="graph", type=click.Choice(["graph", "random"]))
 @click.option("--res_path", default=None, help="path to save results")

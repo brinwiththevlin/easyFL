@@ -86,6 +86,7 @@ class Config:
         similarity: str,
         selection: str,
         res_path: str | None,
+        tolerance: float| None = None,
     ):
         config.max_iter = iterations
         config.iid = iid
@@ -94,6 +95,8 @@ class Config:
         config.similarity = similarity
         config.set_results_file_path(res_path)
         config.random_node_selection = selection == "random"
+        if tolerance is not None:
+            config.tolerance = tolerance
 
 
 config = Config()

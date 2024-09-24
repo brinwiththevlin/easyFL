@@ -24,12 +24,15 @@ def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
     return float(dot_product)
 
 
-def euclid_sim(vector1: Tensor, vector2: Tensor) -> float:
-    """normalized euclid distance"""
-    temp: Tensor = vector1 - vector2
-    temp = (temp**2).sum()
-    return temp.item()
-    # return (1/(1 + temp)).item()
+def pearson_correlation(vector1: Tensor, vector2: Tensor) -> float:
+    #r =\frac{\sum\left(x_{i}-\bar{x}\right)\left(y_{i}-\bar{y}\right)}{\sqrt{\sum\left(x_{i}-\bar{x}\right)^{2} \sum\left(y_{i}-\bar{y}\right)^{2}}}
+    mean1 = vector1.mean().item()
+    mean2 = vector2.mean().item()
+    diff1 = vector1 - mean1
+    diff2 = vector2 - mean2
+    numerator = torch.dot(diff1, diff2).item()
+    denominator = torch.sqrt(torch.dot(diff1, diff1) * torch.dot(diff2, diff2)).item()
+    return numerator / denominator
 
 def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None= None) -> float:
     """uses radial baisis kernel (gaussian)"""
@@ -39,7 +42,7 @@ def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None= None) -> f
     return torch.exp(-gamma * torch.dot(diff, diff)).item()
 
 
-sim_functions = {"cosine": cosine_sim, "euclid": euclid_sim, "kernel": kernel_sim}
+sim_functions = {"cosine": cosine_sim, "pearson": pearson_correlation, "kernel": kernel_sim}
 
 
 def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
