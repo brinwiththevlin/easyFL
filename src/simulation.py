@@ -40,6 +40,7 @@ class DatasetSplit(Dataset):
 )
 @click.option("--selection", default="graph", type=click.Choice(["graph", "random"]))
 @click.option("--res_path", default=None, help="path to save results")
+@click.option("--tolerance", default=None, help="tolerance for similarity")
 def main(
     iterations: int,
     iid: bool,
@@ -48,12 +49,13 @@ def main(
     similarity: str,
     selection: str,
     res_path: str | None,
+    tolerance: float| None,
 ) -> None:
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
 
     config.parse_args(
-        iterations, iid, clients, per_round, similarity, selection, res_path
+        iterations, iid, clients, per_round, similarity, selection, res_path, tolerance
     )
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
