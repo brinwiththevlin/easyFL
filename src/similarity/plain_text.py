@@ -62,7 +62,7 @@ def graph_selector(
         weights_list[0], Tensor
     ), "not implemented for flattenweight = false"
     assert config.n_nodes is not None
-    matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.similarity])
+    matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.selection])
     G = nx.Graph()
     G.add_nodes_from(list(range(config.n_nodes)))
 

@@ -10,7 +10,7 @@ from datasets.dataset import load_data
 from models.get_model import get_model
 from models.models import Models
 from statistic.collect_stat import CollectStatistics
-from statistic.figure import generate_figures
+from statistic.figure import generate_figures, generate_multitrace_figures
 from util.sampling import split_data
 import numpy as np
 import random
@@ -36,26 +36,26 @@ class DatasetSplit(Dataset):
 @click.option("--clients", default=10, help="total number of clients")
 @click.option("--per_round", default=5, help="clints to select per round")
 @click.option(
-    "--similarity", default="cosine", type=click.Choice(["cosine", "pearson", "kernel"])
+    "--selection",
+    default="cosine",
+    type=click.Choice(["cosine", "pearson", "kernel", "random"]),
 )
-@click.option("--selection", default="graph", type=click.Choice(["graph", "random"]))
 @click.option("--res_path", default=None, help="path to save results")
-@click.option("--tolerance", default=None, help="tolerance for similarity")
+@click.option("--tolerance", type=float, default=None, help="tolerance for similarity")
 def main(
     iterations: int,
     iid: bool,
     clients: int | None,
     per_round: int,
-    similarity: str,
     selection: str,
     res_path: str | None,
-    tolerance: float| None,
+    tolerance: float | None,
 ) -> None:
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
 
     config.parse_args(
-        iterations, iid, clients, per_round, similarity, selection, res_path, tolerance
+        iterations, iid, clients, per_round, selection, res_path, tolerance
     )
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
@@ -112,13 +112,15 @@ def main(
     while True:
         w_global_prev = copy.deepcopy(w_global)
 
-        if config.random_node_selection:
+        if config.selection == "random":
             node_subset = np.random.choice(
                 range(config.n_nodes), config.n_nodes_in_each_round, replace=False
             )
         else:
             if first:
-                node_subset = range(config.n_nodes)
+                node_subset = np.random.choice(
+                    range(config.n_nodes), config.n_nodes_in_each_round, replace=False
+                )
                 first = False
             else:
                 node_subset = graph_selector(
@@ -128,7 +130,7 @@ def main(
                 )
 
         w_accu = None
-        for n in node_subset:
+        for n in range(config.n_nodes):
             model.assign_weight(w_global)
             # model.train_one_epoch(train_loader_list[n], device)
             model.model.train()
@@ -152,17 +154,18 @@ def main(
             w = model.get_weight()  # deepcopy is already included here
             weight_list[n] = w
 
-            if w_accu is None:  # accumulated weights
-                w_accu = w
-            else:
-                if config.flatten_weight:
-                    assert isinstance(w_accu, torch.Tensor)
-                    w_accu += w
+            if n in node_subset:
+                if w_accu is None:  # accumulated weights
+                    w_accu = w
                 else:
-                    assert isinstance(w_accu, dict)
-                    assert isinstance(w, dict)
-                    for k in w_accu.keys():
-                        w_accu[k] += w[k]
+                    if config.flatten_weight:
+                        assert isinstance(w_accu, torch.Tensor)
+                        w_accu += w
+                    else:
+                        assert isinstance(w_accu, dict)
+                        assert isinstance(w, dict)
+                        for k in w_accu.keys():
+                            w_accu[k] += w[k]
 
         num_iter = num_iter + config.tau_setup
 
@@ -211,6 +214,7 @@ def main(
 
     stat.collect_stat_end()
     generate_figures()
+    generate_multitrace_figures()
 
 
 if __name__ == "__main__":

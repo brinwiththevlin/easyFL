@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-
 import torch
 
 
@@ -43,34 +42,31 @@ class Config:
         self.max_iter = 1000  # Maximum number of iterations to run
         self.seed = 1
         self.aggregation_method = "FedAvg"
-        self.random_node_selection = True
         self.flatten_weight = True
         # self.iid = True
         self.iid = False
         self.tau_setup = 10  # number of iterations in local training
         self.num_iter_one_output = 50
         self.tolerance = 0.9995 if self.iid else 0.7
-        self.similarity = "cosine"
+        self.selection = "cosine"
 
     def set_results_file_path(self, res_path: str | None) -> None:
         self.comments = (
             self.dataset
-            + "-"
+            + "_"
             + self.model_name
-            + "-"
+            + "_"
             + ("iid" if self.iid else "noniid")
-            + "-"
+            + "_"
             + str(self.n_nodes)
-            + "-"
+            + "_"
             + str(self.n_nodes_in_each_round)
-            + "-"
-            + self.similarity
-            + "-"
-            + "-"
-            + "random"
-            if self.random_node_selection
-            else "graph" + datetime.now().strftime("%m-%d-%H:%M")
+            + "_"
+            + self.selection
+            + "_"
+            + datetime.now().strftime("%m-%d-%H:%M")
         )
+
         if res_path:
             self.results_file_path = os.path.join(self.results_file_path, res_path)
         self.fl_results_file_path = os.path.join(
@@ -80,23 +76,21 @@ class Config:
     def parse_args(
         self,
         iterations: int,
-        iid: int,
-        clients: int| None,
+        iid: bool,
+        clients: int | None,
         per_round: int,
-        similarity: str,
         selection: str,
         res_path: str | None,
-        tolerance: float| None = None,
+        tolerance: float | None = None,
     ):
         config.max_iter = iterations
         config.iid = iid
         config.n_nodes = clients
         config.n_nodes_in_each_round = per_round
-        config.similarity = similarity
-        config.set_results_file_path(res_path)
-        config.random_node_selection = selection == "random"
+        config.selection = selection
         if tolerance is not None:
-            config.tolerance = tolerance
+            config.tolerance = 0.9995 if self.iid else 0.7
+        config.set_results_file_path(res_path)
 
 
 config = Config()
