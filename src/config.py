@@ -88,8 +88,8 @@ class Config:
         config.n_nodes = clients
         config.n_nodes_in_each_round = per_round
         config.selection = selection
-        if tolerance is not None:
-            config.tolerance = 0.9995 if self.iid else 0.7
+        if tolerance is None:
+            config.tolerance = 0.99997
         config.set_results_file_path(res_path)
 
 

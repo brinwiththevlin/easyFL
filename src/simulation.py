@@ -10,11 +10,12 @@ from datasets.dataset import load_data
 from models.get_model import get_model
 from models.models import Models
 from statistic.collect_stat import CollectStatistics
-from statistic.figure import generate_figures, generate_multitrace_figures
+from statistic.figure import generate_figures
 from util.sampling import split_data
 import numpy as np
 import random
 import copy
+import sys
 
 
 class DatasetSplit(Dataset):
@@ -51,6 +52,9 @@ def main(
     res_path: str | None,
     tolerance: float | None,
 ) -> None:
+    print(
+        f"Arguments received: iterations={iterations}, iid={iid}, clients={clients}, per_round={per_round}, selection={selection}, res_path={res_path}"
+    )
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
 
@@ -195,8 +199,8 @@ def main(
         else:
             assert isinstance(w_global, dict)
             for k in w_global.keys():
-                if (True in torch.isnan(w_global[k])) or (
-                    True in torch.isinf(w_global[k])
+                if (True in torch.isnan(w_global[k])) or (  # type: ignore
+                    True in torch.isinf(w_global[k])  # type: ignore
                 ):  # type: ignore
                     has_nan = True
         if has_nan:
@@ -214,8 +218,8 @@ def main(
 
     stat.collect_stat_end()
     generate_figures()
-    generate_multitrace_figures()
 
 
 if __name__ == "__main__":
     main()
+    sys.exit(0)

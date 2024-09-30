@@ -249,7 +249,7 @@ class Models:
         avg_loss /= len(data_test_loader.dataset)  # type: ignore
         acc = float(total_correct) / len(data_test_loader.dataset)  # type: ignore
 
-        return round(avg_loss.item(), 3), round(acc, 3)
+        return round(avg_loss.item(), 5), round(acc, 5)
 
     def precision(
         self,
@@ -281,7 +281,7 @@ class Models:
         except ZeroDivisionError:
             precision = 0.0
 
-        return round(precision, 3)
+        return round(precision, 5)
 
     def recall(
         self,
@@ -313,7 +313,7 @@ class Models:
         except ZeroDivisionError:
             recall = 0.0
 
-        return round(recall, 3)
+        return round(recall, 5)
 
     def f1(
         self,
@@ -327,7 +327,7 @@ class Models:
             f1 = (2 * precision * recall) / (precision + recall)
         except ZeroDivisionError:
             f1 = 0.0
-        return round(f1, 3)
+        return round(f1, 5)
 
     def predict(
         self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device

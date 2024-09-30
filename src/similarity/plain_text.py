@@ -51,7 +51,10 @@ def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
     for pair in combinations(enumerate(weights_list), 2):
         idx: list[int] = [x[0] for x in pair]
         values: list[Tensor] = [x[1] for x in pair]
-        matrix[idx] = similarity(*values)
+        sim_value = similarity(*values)
+        matrix[idx[0], idx[1]] = sim_value
+        matrix[idx[1], idx[0]] = sim_value
+
     return matrix
 
 
@@ -63,20 +66,47 @@ def graph_selector(
     ), "not implemented for flattenweight = false"
     assert config.n_nodes is not None
     matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.selection])
-    G = nx.Graph()
-    G.add_nodes_from(list(range(config.n_nodes)))
 
+    # using matrix create a partition where node [n] = { X \subset N | \forall i,j \in X, matrix[i,n] > tolerance matrix[j,n] > tolerance matrix[i,j] > tolerance}
+    partition = []
+    found =  False
     for i in range(config.n_nodes):
-        for j in range(i, config.n_nodes):
-            if matrix[i, j] > tolerance:
-                G.add_edge(i, j)
+        for part in partition:
+            if all(matrix[i,j] > tolerance for j in part):
+                part.append(i)
+                found = True
+                break
 
-    components = list(nx.connected_components(G))
-    components = [list(c) for c in components]
-    nodes: list[int] = []
-    for component in components:
+        if not found:
+            partition.append([i])
+
+        found = False
+
+    nodes = []
+    for part in partition:
         sample_percent = max(
-            floor((len(component) / config.n_nodes) * size), 1
+            floor((len(part) / config.n_nodes) * size), 1
         )  # always sample at least 1
-        nodes.extend(random.sample(component, sample_percent))
+        nodes.extend(random.sample(part, sample_percent))
+
     return nodes
+
+
+
+    # G = nx.Graph()
+    # G.add_nodes_from(list(range(config.n_nodes)))
+    #
+    # for i in range(config.n_nodes):
+    #     for j in range(i, config.n_nodes):
+    #         if matrix[i, j] > tolerance:
+    #             G.add_edge(i, j)
+    #
+    # components = list(nx.connected_components(G))
+    # components = [list(c) for c in components]
+    # nodes: list[int] = []
+    # for component in components:
+    #     sample_percent = max(
+    #         floor((len(component) / config.n_nodes) * size), 1
+    #     )  # always sample at least 1
+    #     nodes.extend(random.sample(component, sample_percent))
+    # return nodes
