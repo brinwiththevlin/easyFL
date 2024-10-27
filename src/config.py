@@ -47,7 +47,7 @@ class Config:
         self.iid = False
         self.tau_setup = 10  # number of iterations in local training
         self.num_iter_one_output = 50
-        self.tolerance = 0.9995 if self.iid else 0.7
+        self.tolerance = 0.99995 if self.iid else 0.7
         self.selection = "cosine"
 
     def set_results_file_path(self, res_path: str | None) -> None:

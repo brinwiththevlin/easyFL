@@ -33,7 +33,7 @@ class ModelCNNMnist(nn.Module):
             nn.LocalResponseNorm(4, alpha=0.001 / 9.0, beta=0.75, k=1),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
-        self.fc1 = nn.Linear(7 * 7 * 32, 256)
+ BOLD       self.fc1 = nn.Linear(7 * 7 * 32, 256)
         self.fc2 = nn.Linear(256, 10)
 
     def forward(self, x: Tensor, out_activation: bool =False):

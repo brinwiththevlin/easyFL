@@ -1,6 +1,7 @@
 import pytest
 import torch
-from src.similarity.plain_text import cosine_sim, euclid_sim, kernel_sim, sim_matrix, graph_selector
+from src.similarity.plain_text import cosine_sim, kernel_sim, sim_matrix, graph_selector
+
 
 def test_cosine_sim():
     tensor1 = torch.tensor([1, 2, 3])
@@ -9,15 +10,6 @@ def test_cosine_sim():
 
     tensor2 = torch.tensor([3, 2, 1])
     assert pytest.approx(cosine_sim(tensor1, tensor2), abs=1e-5) == 0.7142857313156128
-
-
-def test_euclid_sim():
-    tensor1 = torch.tensor([1, 2, 3])
-    tensor2 = torch.tensor([1, 2, 3])
-    assert pytest.approx(euclid_sim(tensor1, tensor2), abs=1e-5) == 0.0
-
-    tensor2 = torch.tensor([3, 2, 1])
-    assert pytest.approx(euclid_sim(tensor1, tensor2), abs=1e-5) == 2.8284270763397217
 
 
 def test_kernel_sim():
@@ -37,9 +29,11 @@ def test_sim_matrix():
     expected_matrix = [
         [1.0, 0.7142857313156128, 0.7142857313156128],
         [0.7142857313156128, 1.0, 0.3678794503211975],
-        [0.7142857313156128, 0.3678794503211975, 1.0]
+        [0.7142857313156128, 0.3678794503211975, 1.0],
     ]
-    assert pytest.approx(sim_matrix(weights_list, cosine_sim), abs=1e-5) == expected_matrix
+    assert (
+        pytest.approx(sim_matrix(weights_list, cosine_sim), abs=1e-5) == expected_matrix
+    )
 
 
 def test_graph_selector():
@@ -51,4 +45,3 @@ def test_graph_selector():
     weights_list = [tensor1, tensor2, tensor3, tensor4, tensor5]
     expected_selector = [0, 1, 2]
     assert graph_selector(weights_list, 3, 0.65) == expected_selector
-

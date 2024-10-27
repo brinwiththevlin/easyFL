@@ -1,5 +1,8 @@
 from math import floor
+from sklearn.cluster import KMeans
+import torch.nn.functional as F
 import torch
+import torch.utils.data
 import numpy as np
 import networkx as nx
 import random
@@ -25,7 +28,7 @@ def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
 
 
 def pearson_correlation(vector1: Tensor, vector2: Tensor) -> float:
-    #r =\frac{\sum\left(x_{i}-\bar{x}\right)\left(y_{i}-\bar{y}\right)}{\sqrt{\sum\left(x_{i}-\bar{x}\right)^{2} \sum\left(y_{i}-\bar{y}\right)^{2}}}
+    # r =\frac{\sum\left(x_{i}-\bar{x}\right)\left(y_{i}-\bar{y}\right)}{\sqrt{\sum\left(x_{i}-\bar{x}\right)^{2} \sum\left(y_{i}-\bar{y}\right)^{2}}}
     mean1 = vector1.mean().item()
     mean2 = vector2.mean().item()
     diff1 = vector1 - mean1
@@ -34,7 +37,8 @@ def pearson_correlation(vector1: Tensor, vector2: Tensor) -> float:
     denominator = torch.sqrt(torch.dot(diff1, diff1) * torch.dot(diff2, diff2)).item()
     return numerator / denominator
 
-def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None= None) -> float:
+
+def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None = None) -> float:
     """uses radial baisis kernel (gaussian)"""
     if gamma is None:
         gamma = 1.0 / len(vector1)  # Default gamma
@@ -42,7 +46,11 @@ def kernel_sim(vector1: Tensor, vector2: Tensor, gamma: float | None= None) -> f
     return torch.exp(-gamma * torch.dot(diff, diff)).item()
 
 
-sim_functions = {"cosine": cosine_sim, "pearson": pearson_correlation, "kernel": kernel_sim}
+sim_functions = {
+    "cosine": cosine_sim,
+    "pearson": pearson_correlation,
+    "kernel": kernel_sim,
+}
 
 
 def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
@@ -67,46 +75,84 @@ def graph_selector(
     assert config.n_nodes is not None
     matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.selection])
 
-    # using matrix create a partition where node [n] = { X \subset N | \forall i,j \in X, matrix[i,n] > tolerance matrix[j,n] > tolerance matrix[i,j] > tolerance}
-    partition = []
-    found =  False
+    G = nx.Graph()
+    G.add_nodes_from(list(range(config.n_nodes)))
+
     for i in range(config.n_nodes):
-        for part in partition:
-            if all(matrix[i,j] > tolerance for j in part):
-                part.append(i)
-                found = True
-                break
+        for j in range(i, config.n_nodes):
+            if matrix[i, j] > tolerance:
+                G.add_edge(i, j)
 
-        if not found:
-            partition.append([i])
-
-        found = False
-
-    nodes = []
-    for part in partition:
+    components = list(nx.connected_components(G))
+    components = [list(c) for c in components]
+    nodes: list[int] = []
+    for component in components:
         sample_percent = max(
-            floor((len(part) / config.n_nodes) * size), 1
+            floor((len(component) / config.n_nodes) * size), 1
         )  # always sample at least 1
-        nodes.extend(random.sample(part, sample_percent))
-
+        nodes.extend(random.sample(component, sample_percent))
     return nodes
 
 
+def kl_divergence(dataset1_targets, dataset2_targets, num_classes):
+    # Count the occurrences of each class
+    counts1 = torch.bincount(dataset1_targets, minlength=num_classes)
+    counts2 = torch.bincount(dataset2_targets, minlength=num_classes)
 
-    # G = nx.Graph()
-    # G.add_nodes_from(list(range(config.n_nodes)))
-    #
-    # for i in range(config.n_nodes):
-    #     for j in range(i, config.n_nodes):
-    #         if matrix[i, j] > tolerance:
-    #             G.add_edge(i, j)
-    #
-    # components = list(nx.connected_components(G))
-    # components = [list(c) for c in components]
-    # nodes: list[int] = []
-    # for component in components:
-    #     sample_percent = max(
-    #         floor((len(component) / config.n_nodes) * size), 1
-    #     )  # always sample at least 1
-    #     nodes.extend(random.sample(component, sample_percent))
-    # return nodes
+    # Normalize to get the probabilities
+    prob1 = counts1.float() / len(dataset1_targets)
+    prob2 = counts2.float() / len(dataset2_targets)
+
+    # Add a small epsilon to avoid log(0)
+    epsilon = 1e-10
+    prob1 += epsilon
+    prob2 += epsilon
+
+    # Calculate KL divergence
+    kl_div = F.kl_div(prob1.log(), prob2, reduction="batchmean")
+    return kl_div.item()
+
+
+def kmeans_selector(
+    weights_list: list[Tensor],
+    train_loader_list: list[torch.utils.data.DataLoader],
+    val_targets: Tensor,
+    size: int,
+    tolerance: float,
+) -> list[int]:
+    # WARNING: only works for MNIST
+    local_targets = []
+    for loader in train_loader_list:
+        targets =[]
+        for images, labels in loader:
+            targets.extend(labels)
+        local_targets.append(torch.tensor(targets))
+
+    divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
+    new_weights_list = [
+        weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i])
+        for i, x in enumerate(divergences)
+    ]
+    non_zero_indices = [
+        i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)
+    ]
+    non_zero_vectors = torch.stack([new_weights_list[i] for i in non_zero_indices])
+    #convert non_zero_vectors to numpy
+    non_zero_vectors = non_zero_vectors.cpu().numpy()
+    kmeans = KMeans(n_clusters=size)
+    kmeans.fit(non_zero_vectors)
+    # chose one example from each cluster closest to the center
+    centers = kmeans.cluster_centers_
+    #convet back to torch
+    centers = torch.tensor(centers).to(config.device)
+    non_zero_vectors = torch.tensor(non_zero_vectors).to(config.device)
+    closest: list[int] = []
+    for center in centers:
+        # Calculate distances between the center and all non-zero vectors
+        distances = torch.norm(non_zero_vectors - center, dim=1)
+        # Get the index of the closest vector within the non-zero vectors
+        closest_idx = int(torch.argmin(distances).item())
+        # Map it back to the original weights_list indices
+        closest.append(non_zero_indices[closest_idx])
+
+    return closest

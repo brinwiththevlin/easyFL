@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 from torchvision.datasets import VisionDataset
 from config import config
-from similarity.plain_text import graph_selector
+from similarity.plain_text import kmeans_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
 from models.models import Models
@@ -67,7 +67,7 @@ def main(
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
 
-    data_train, data_test = load_data(
+    data_train, data_test, data_validate = load_data(
         config.dataset, config.dataset_file_path, config.model_name
     )
     data_train_loader = DataLoader(
@@ -76,6 +76,9 @@ def main(
     data_test_loader = DataLoader(
         data_test, batch_size=config.batch_size_eval, num_workers=0
     )  # num_workers=8
+    # data_validation_loader = DataLoader(
+    #     data_validate, batch_size=config.batch_size_eval, num_workers=0
+    # )
     dict_users = split_data(config.dataset, data_train, config.n_nodes, config.iid)
 
     if config.n_nodes is None:
@@ -91,7 +94,7 @@ def main(
     )
 
     stat = CollectStatistics(results_file_name=config.fl_results_file_path)
-    train_loader_list = []
+    train_loader_list: list[DataLoader]= []
     dataiter_list = []
     weight_list: list[torch.Tensor | dict] = [
         torch.empty(0) for _ in range(config.n_nodes)
@@ -127,11 +130,18 @@ def main(
                 )
                 first = False
             else:
-                node_subset = graph_selector(
+                node_subset = kmeans_selector(
                     weight_list,  # type: ignore
-                    config.n_nodes_in_each_round,
-                    config.tolerance,
+                    train_loader_list,
+                    data_validate.targets,  # type: ignore
+                    size=config.n_nodes_in_each_round,
+                    tolerance=config.tolerance,
                 )
+                # node_subset = graph_selector(
+                #     weight_list,  # type: ignore
+                #     config.n_nodes_in_each_round,
+                #     config.tolerance,
+                # )
 
         w_accu = None
         for n in range(config.n_nodes):

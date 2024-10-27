@@ -1,7 +1,7 @@
 from src.config import config
 from torch.utils.data import DataLoader
-from datasets.dataset import load_data
-from models.get_model import get_model
+from src.datasets.dataset import load_data
+from src.models.get_model import get_model
 import unittest
 import os
 import sys

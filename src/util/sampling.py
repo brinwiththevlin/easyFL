@@ -45,7 +45,7 @@ def mnist_noniid(dataset: MNIST, num_users: int):
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     dominant_classes = np.random.choice(num_classes, num_users, replace=True)
 
-    dominant_ratio = 0.6
+    dominant_ratio = 0.9
 
     num_samples_per_user = len(dataset) // num_users
 

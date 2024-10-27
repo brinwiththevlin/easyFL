@@ -19,11 +19,13 @@ def generate_multitrace_figures(results_dir_name: str | None = None):
     iids = set([d for d in run_dirs if "noniid" not in d])
     noniids = set(run_dirs) - iids
 
+    client_splits = set(["_".join(d.split("_")[3:5]) for d in run_dirs])
+
     iids_by_clients = {
-        d: [c for c in iids if d in c] for d in ["10_5", "50_25", "100_50"]
+        d: [c for c in iids if d in c] for d in client_splits
     }
     noniids_by_clients = {
-        d: [c for c in noniids if d in c] for d in ["10_5", "50_25", "100_50"]
+        d: [c for c in noniids if d in c] for d in client_splits
     }
 
     for clients, dirs in iids_by_clients.items():
