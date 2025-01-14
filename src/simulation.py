@@ -34,8 +34,8 @@ class DatasetSplit(Dataset):
 @click.command()
 @click.option("--iterations", default=1000, help="number of global iterations")
 @click.option("--iid", is_flag=True, help="set to true if the data is to be iid")
-@click.option("--clients", default=10, help="total number of clients")
-@click.option("--per_round", default=5, help="clints to select per round")
+@click.option("--clients", default=100, help="total number of clients")
+@click.option("--per_round", default=10, help="clints to select per round")
 @click.option(
     "--selection",
     default="cosine",
@@ -43,6 +43,7 @@ class DatasetSplit(Dataset):
 )
 @click.option("--res_path", default=None, help="path to save results")
 @click.option("--tolerance", type=float, default=None, help="tolerance for similarity")
+@click.option("--under_rep", type=int, default=3, help="number of under-represented classes")
 def main(
     iterations: int,
     iid: bool,
@@ -51,6 +52,7 @@ def main(
     selection: str,
     res_path: str | None,
     tolerance: float | None,
+    under_rep: int | None
 ) -> None:
     print(
         f"Arguments received: iterations={iterations}, iid={iid}, clients={clients}, per_round={per_round}, selection={selection}, res_path={res_path}"
@@ -59,7 +61,7 @@ def main(
         raise ValueError("per_round can't be higher the thotal number of clients")
 
     config.parse_args(
-        iterations, iid, clients, per_round, selection, res_path, tolerance
+        iterations, iid, clients, per_round, selection, res_path, tolerance, under_rep
     )
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
@@ -135,7 +137,7 @@ def main(
                     train_loader_list,
                     data_validate.targets,  # type: ignore
                     size=config.n_nodes_in_each_round,
-                    tolerance=config.tolerance,
+                    # tolerance=config.tolerance,
                 )
                 # node_subset = graph_selector(
                 #     weight_list,  # type: ignore

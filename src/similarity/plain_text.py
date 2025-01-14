@@ -95,9 +95,13 @@ def graph_selector(
 
 
 def kl_divergence(dataset1_targets, dataset2_targets, num_classes):
+    if isinstance(dataset1_targets, list):
+        dataset1_targets = torch.tensor(dataset1_targets).to(config.device)
+    if isinstance(dataset2_targets, list):
+        dataset2_targets = torch.tensor(dataset2_targets).to(config.device)
     # Count the occurrences of each class
-    counts1 = torch.bincount(dataset1_targets, minlength=num_classes)
-    counts2 = torch.bincount(dataset2_targets, minlength=num_classes)
+    counts1 = torch.bincount(dataset1_targets, minlength=num_classes).to(config.device)
+    counts2 = torch.bincount(dataset2_targets, minlength=num_classes).to(config.device)
 
     # Normalize to get the probabilities
     prob1 = counts1.float() / len(dataset1_targets)
@@ -118,9 +122,9 @@ def kmeans_selector(
     train_loader_list: list[torch.utils.data.DataLoader],
     val_targets: Tensor,
     size: int,
-    tolerance: float,
+    # tolerance: float,
 ) -> list[int]:
-    # WARNING: only works for MNIST
+    # WARNING: only works for MNIST and CIFAR
     local_targets = []
     for loader in train_loader_list:
         targets =[]
@@ -129,6 +133,7 @@ def kmeans_selector(
         local_targets.append(torch.tensor(targets))
 
     divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
+    tolerance = get_tolerance(divergences)
     new_weights_list = [
         weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i])
         for i, x in enumerate(divergences)
@@ -156,3 +161,6 @@ def kmeans_selector(
         closest.append(non_zero_indices[closest_idx])
 
     return closest
+
+def get_tolerance(divergences: list[float]):
+    return np.percentile(divergences, 85)
