@@ -8,12 +8,12 @@ class Config:
         self.use_gpu = True
         self.use_gpu = self.use_gpu and torch.cuda.is_available()
         self.device = torch.device("cuda") if self.use_gpu else torch.device("cpu")
-        self.dataset = "MNIST"
-        self.model_name = "ModelCNNMnist"
+        # self.dataset = "MNIST"
+        # self.model_name = "ModelCNNMnist"
         # self.model_name = 'LeNet5'
-        # self.dataset = 'cifar10'
+        self.dataset = 'cifar10'
         # self.model_name = 'ModelCNNCifar10'
-        # self.model_name = 'ResNet34'
+        self.model_name = 'ResNet34'
         # self.model_name = 'ResNet18'
         # self.dataset = 'cifar100'
         # self.model_name = 'ResNet34'
@@ -47,17 +47,17 @@ class Config:
         self.iid = False
         self.tau_setup = 10  # number of iterations in local training
         self.num_iter_one_output = 50
-        self.tolerance = 0.99995 if self.iid else 0.7
+        self.tolerance = None
         self.selection = "cosine"
+        self.under_represented_classes = 0
 
     def set_results_file_path(self, res_path: str | None) -> None:
         self.comments = (
             self.dataset
             + "_"
-            + self.model_name
-            + "_"
             + ("iid" if self.iid else "noniid")
             + "_"
+            + (f"{self.under_represented_classes}_" if not self.iid else "")
             + str(self.n_nodes)
             + "_"
             + str(self.n_nodes_in_each_round)
@@ -82,6 +82,7 @@ class Config:
         selection: str,
         res_path: str | None,
         tolerance: float | None = None,
+        under_rep: int = 3,
     ):
         config.max_iter = iterations
         config.iid = iid
@@ -89,8 +90,9 @@ class Config:
         config.n_nodes_in_each_round = per_round
         config.selection = selection
         if tolerance is None:
-            config.tolerance = 0.99997
+            config.tolerance = 0.07
         config.set_results_file_path(res_path)
+        config.under_represented_classes =  under_rep
 
 
 config = Config()

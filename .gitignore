@@ -4,5 +4,5 @@
 __pycache__
 *.py___jb_tmp___
 */results/
-/dataset_data_files/
+*/dataset_data_files/
 **/*.log
