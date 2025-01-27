@@ -134,6 +134,9 @@ def kmeans_selector(
             elif label_tampering == "zero":
                 for images, labels in loader:
                     targets.extend(torch.zeros_like(labels))
+            elif label_tampering == "none":
+                for images, labels in loader:
+                    targets.extend(labels)
             else:
                 raise Exception("Unknown label tampering method name")
             local_targets.append(torch.tensor(targets))

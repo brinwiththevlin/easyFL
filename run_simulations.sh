@@ -30,6 +30,7 @@ run_simulations() {
                 --per_round "$per_round" \
                 --selection "$selection" \
                 --under_rep 3 \
+                --iid\
                 --res_path "$NEW_PATH" \
                 --dataset "$dataset" \
                 --label_tampering "$label_tampering" \
@@ -45,6 +46,16 @@ run_simulations() {
                 --under_rep 3 \
                 --res_path "$NEW_PATH" \
                 --bad_nodes "$bad_nodes" \
+                --dataset "$dataset" \
+                --label_tampering "$label_tampering" \
+                --weight_tampering "$weight_tampering"
+
+            python3 src/config.py \
+                --clients "$clients" \
+                --per_round "$per_round" \
+                --selection "$selection" \
+                --under_rep 3 \
+                --res_path "$NEW_PATH" \
                 --dataset "$dataset" \
                 --label_tampering "$label_tampering" \
                 --weight_tampering "$weight_tampering"
@@ -78,8 +89,8 @@ run_simulations() {
 # Parameter arrays
 BAD_NODES=(1)
 DATASETS=("MNIST" "cifar10")
-LABEL_TAMPERING=("none" "zero" "reverse" "random")
-WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random")
+LABEL_TAMPERING=( "zero" "reverse" "random")
+WEIGHT_TAMPERING=("none" )
 
 # Nested loops to run all parameter combinations
 for bad_nodes in "${BAD_NODES[@]}"; do
