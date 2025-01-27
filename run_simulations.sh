@@ -1,83 +1,93 @@
 #!/bin/bash
 
-# WARNING: only run this script if on a GPU server or if you have sufficient GPU power. may take a long time
 set -e
 
-# Find all src/results/simulation* paths and set a new path for the next simulation
-COUNT=$(find src/results/simulation*  -maxdepth 0 -type d | wc -w)
-NEW_COUNT=$((COUNT + 1))
-NEW_PATH="simulation${NEW_COUNT}"
+# Function to run simulations with consistent parameters
+run_simulations() {
+    local bad_nodes=$1
+    local dataset=$2
+    local label_tampering=$3
+    local weight_tampering=$4
+    local NEW_PATH="simulation_bn${bad_nodes}_ds${dataset}_lt${label_tampering}_wt${weight_tampering}"
 
-# Run simulations with interleaved --iid and non--iid configurations
-# 25 clients, 10 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
+    # Simulation configurations
+    local client_configs=(
+        "25 10"
+        "50 10"
+        "100 10"
+    )
 
-# 50 clients, 25 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
+    # Selection methods
+    local selection_methods=("kl-kmeans" "random")
 
-# 100 clients, 50 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection cosine --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection random --under_rep 3 --res_path $NEW_PATH
+    # Iterate through client configurations and selection methods
+    for config in "${client_configs[@]}"; do
+        read -r clients per_round <<< "$config"
 
-# Aggregate results
-python3 src/aggregate_figure.py --results_dir_name src/results/$NEW_PATH
+        for selection in "${selection_methods[@]}"; do
+            python3 src/config.py \
+                --clients "$clients" \
+                --per_round "$per_round" \
+                --selection "$selection" \
+                --under_rep 3 \
+                --res_path "$NEW_PATH" \
+                --dataset "$dataset" \
+                --label_tampering "$label_tampering" \
+                --weight_tampering "$weight_tampering"
 
-COUNT=$(find src/results/simulation*  -maxdepth 0 -type d | wc -w)
-NEW_COUNT=$((COUNT + 1))
-NEW_PATH="simulation${NEW_COUNT}"
+            # IID simulation
+            python3 src/simulation.py \
+                --iterations 1000 \
+                --iid \
+                --clients "$clients" \
+                --per_round "$per_round" \
+                --selection "$selection" \
+                --under_rep 3 \
+                --res_path "$NEW_PATH" \
+                --bad_nodes "$bad_nodes" \
+                --dataset "$dataset" \
+                --label_tampering "$label_tampering" \
+                --weight_tampering "$weight_tampering"
 
-# Run simulations with interleaved --iid and non--iid configurations
-# 25 clients, 10 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
+            # Non-IID simulation
+            python3 src/simulation.py \
+                --iterations 1000 \
+                --clients "$clients" \
+                --per_round "$per_round" \
+                --selection "$selection" \
+                --under_rep 3 \
+                --res_path "$NEW_PATH" \
+                --bad_nodes "$bad_nodes" \
+                --dataset "$dataset" \
+                --label_tampering "$label_tampering" \
+                --weight_tampering "$weight_tampering"
+        done
+    done
 
-# 50 clients, 25 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
+    # Aggregate results
+    python3 src/aggregate_figure.py \
+        --results_dir_name "src/results/$NEW_PATH" \
+        --bad_nodes "$bad_nodes" \
+        --dataset "$dataset" \
+        --label_tampering "$label_tampering" \
+        --weight_tampering "$weight_tampering"
+}
 
-# 100 clients, 50 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection cosine --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection random --under_rep 5 --res_path $NEW_PATH
 
-# Aggregate results
-python3 src/aggregate_figure.py --results_dir_name src/results/$NEW_PATH
+# Main script execution
+# Parameter arrays
+BAD_NODES=(1)
+DATASETS=("MNIST" "cifar10")
+LABEL_TAMPERING=("none" "zero" "reverse" "random")
+WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random")
 
-COUNT=$(find src/results/simulation*  -maxdepth 0 -type d | wc -w)
-NEW_COUNT=$((COUNT + 1))
-NEW_PATH="simulation${NEW_COUNT}"
-
-# Run simulations with interleaved --iid and non--iid configurations
-# 25 clients, 10 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection cosine --under_rep  7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection cosine --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 25 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 25 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-
-# 50 clients, 25 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection cosine --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection cosine --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 50 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 50 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-
-# 100 clients, 50 per round, 1000 iterations
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection cosine --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection cosine --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --iid --clients 100 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-python3 src/simulation.py --iterations 1000 --clients 100 --per_round 10 --selection random --under_rep 7 --res_path $NEW_PATH
-
-# Aggregate results
-python3 src/aggregate_figure.py --results_dir_name src/results/$NEW_PATH
+# Nested loops to run all parameter combinations
+for bad_nodes in "${BAD_NODES[@]}"; do
+    for dataset in "${DATASETS[@]}"; do
+        for label_tampering in "${LABEL_TAMPERING[@]}"; do
+            for weight_tampering in "${WEIGHT_TAMPERING[@]}"; do
+                run_simulations "$bad_nodes" "$dataset" "$label_tampering" "$weight_tampering"
+            done
+        done
+    done
+done

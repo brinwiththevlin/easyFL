@@ -1,4 +1,6 @@
-from config import config
+from src.config import load_config, Config
+
+config = load_config()
 import pandas as pd
 import plotly.express as px
 
@@ -22,5 +24,3 @@ def generate_figures(results_file_name: str | None = None):
         png_file = f"{path_header}/{metric}_over_time.png"
         fig.write_image(png_file)
         print(f"Figure saved as {png_file}")
-
-

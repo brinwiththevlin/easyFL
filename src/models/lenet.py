@@ -28,9 +28,7 @@ class LeNet5(nn.Module):
         self.relu4 = nn.ReLU()
         self.fc2 = nn.Linear(84, 10)
 
-    def forward(
-        self, img: Tensor, out_feature: bool = False, out_activation: bool = False
-    ):
+    def forward(self, img: Tensor, out_feature: bool = False, out_activation: bool = False):
         activation1 = self.conv1(img)
         output = self.relu1(activation1)
         output = self.maxpool1(output)
@@ -69,9 +67,7 @@ class LeNet5Half(nn.Module):
         self.fc2 = nn.Linear(42, 10)
 
     # [batch_size, 1, 32, 32]
-    def forward(
-        self, img: Tensor, out_feature: bool = False, out_activation: bool = False
-    ):
+    def forward(self, img: Tensor, out_feature: bool = False, out_activation: bool = False):
         activation1 = self.conv1(img)  # [batch_size, 3, 28, 28]
         output = self.relu1(activation1)  # [batch_size, 3, 28, 28]
         output = self.maxpool1(output)  # [batch_size, 3, 14, 14]

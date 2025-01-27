@@ -6,3 +6,4 @@ __pycache__
 */results/
 */dataset_data_files/
 **/*.log
+config.yaml

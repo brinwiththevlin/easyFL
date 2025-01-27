@@ -264,9 +264,12 @@ import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 from torchvision.datasets import CIFAR10, CIFAR100, SVHN, VisionDataset
 from torchvision.datasets.mnist import MNIST
-from config import config
+from src.config import load_config, Config
+
+config = load_config()
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 def get_data_info(dataset: str, model_name: str) -> tuple[int, int, int]:
     if dataset == "MNIST":
@@ -302,9 +305,8 @@ def get_data_info(dataset: str, model_name: str) -> tuple[int, int, int]:
         raise Exception("Unknown dataset name.")
     return img_size, channels, num_classes
 
-def load_data(
-    dataset: str, data_path: str, model_name: str
-) -> tuple[VisionDataset, VisionDataset, VisionDataset]:
+
+def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionDataset, VisionDataset, VisionDataset]:
     """load test, train and validation data for the given dataset
     where test and validation datasets have the same label distribution
     Args:
@@ -399,9 +401,8 @@ def load_data(
             stratify=data_full.targets,
         )
 
-
         if isinstance(data_full.targets, list):
-            data_full.targets = torch.tensor(data_full.targets) # type: ignore
+            data_full.targets = torch.tensor(data_full.targets)  # type: ignore
         test_val_idx = unbalanced_classes(test_val_idx, data_full.targets[test_val_idx])
         test_idx, val_idx = train_test_split(
             test_val_idx,
@@ -423,19 +424,11 @@ def load_data(
                 transforms.Normalize(mean, std),
             ]
         )
-        transform_test = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean, std)]
-        )
+        transform_test = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
 
-        data_train = SVHN(
-            data_path + "/SVHN", split="train", download=True, transform=transform_train
-        )
-        data_test = SVHN(
-            data_path + "/SVHN", split="test", download=True, transform=transform_test
-        )
-        data_val = SVHN(
-            data_path + "/SVHN", split="test", download=True, transform=transform_test
-        )
+        data_train = SVHN(data_path + "/SVHN", split="train", download=True, transform=transform_train)
+        data_test = SVHN(data_path + "/SVHN", split="test", download=True, transform=transform_test)
+        data_val = SVHN(data_path + "/SVHN", split="test", download=True, transform=transform_test)
 
     elif dataset == "FEMNIST":
         from src.datasets.femnist import FEMNIST
@@ -487,4 +480,3 @@ def load_data(
         raise Exception("Unknown dataset name.")
 
     return data_train, data_test, data_val
-
