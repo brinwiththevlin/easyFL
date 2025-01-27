@@ -4,7 +4,7 @@ from typing import Iterable
 from torch.utils.data import Dataset, DataLoader
 import torch
 from torchvision.datasets import VisionDataset
-from config import Config
+from config import load_config
 from similarity.plain_text import kmeans_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
@@ -77,11 +77,8 @@ def main(
         raise ValueError("per_round can't be higher the thotal number of clients")
 
     bad_subset = random.sample(range(clients), bad_nodes)
-    config = Config()
-    config.parse_args(
-        iterations, iid, clients, per_round, selection, res_path, under_rep, dataset, label_tampering, weight_tampering
-    )
-    config.save_config("config.json")
+    config = load_config()
+    
 
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
@@ -186,6 +183,8 @@ def main(
                     model.tamper_weights_reverse()
                 elif config.weight_tampering == "random":
                     model.tamper_weights_random()
+                elif config.weight_tampering == "none":
+                    pass
                 else:
                     raise Exception("Unknown weight tampering method name")
             w = model.get_weight()  # deepcopy is already included here
