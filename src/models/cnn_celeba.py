@@ -2,57 +2,57 @@ from torch.functional import Tensor
 import torch.nn as nn
 import os
 import sys
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class ModelCNNCeleba(nn.Module):
     def __init__(self):
         super(ModelCNNCeleba, self).__init__()
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=3,
-                      out_channels=32,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      ),
-
+            nn.Conv2d(
+                in_channels=3,
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            ),
             nn.BatchNorm2d(32),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.ReLU(),
         )
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=32,
-                      out_channels=32,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      ),
-
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            ),
             nn.BatchNorm2d(32),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.ReLU(),
         )
         self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=32,
-                      out_channels=32,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      ),
-
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            ),
             nn.BatchNorm2d(32),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
             nn.ReLU(),
         )
         self.conv4 = nn.Sequential(
-            nn.Conv2d(in_channels=32,
-                      out_channels=32,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      ),
-
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            ),
             nn.BatchNorm2d(32),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
             nn.ReLU(),
@@ -60,7 +60,7 @@ class ModelCNNCeleba(nn.Module):
 
         self.fc = nn.Linear(1152, 2)
 
-    def forward(self, x: Tensor, out_activation: bool=False):
+    def forward(self, x: Tensor, out_activation: bool = False):
         output1 = self.conv1(x)
         output2 = self.conv2(output1)
         output3 = self.conv3(output2)

@@ -80,14 +80,10 @@ class Models:
             self.model = ResNet18(num_classes=num_classes)
             # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
         elif model_name == "WResNet40-2":
-            self.model = WideResNet(
-                depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0
-            )
+            self.model = WideResNet(depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0)
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         elif model_name == "WResNet16-1":
-            self.model = WideResNet(
-                depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0
-            )
+            self.model = WideResNet(depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0)
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         else:
             raise ValueError(f"model_name {model_name} is not supported")
@@ -152,14 +148,24 @@ class Models:
                 )
                 start_index = 0
                 for i, [_, v] in zip(range(len(self.weights_num_list)), state.items()):
-                    weight_flatten_tensor[
-                        start_index : start_index + self.weights_num_list[i]
-                    ] = v.view(1, -1)
+                    weight_flatten_tensor[start_index : start_index + self.weights_num_list[i]] = v.view(1, -1)
                     start_index += self.weights_num_list[i]
 
                 return weight_flatten_tensor
             else:
                 return copy.deepcopy(state)
+
+    def tamper_weights_large_negative(self) -> None:
+        for k, v in self.model.state_dict().items():
+            self.model.state_dict()[k] = -9999999
+
+    def tamper_weights_reverse(self) -> None:
+        for k, v in self.model.state_dict().items():
+            self.model.state_dict()[k] = -v
+
+    def tamper_weights_random(self) -> None:
+        for k, v in self.model.state_dict().items():
+            self.model.state_dict()[k] = torch.rand_like(v)
 
     def assign_weight(self, w: Tensor | dict[str, Any]) -> None:
         if self.flatten_weight:
@@ -176,17 +182,13 @@ class Models:
         for i in range(len(self.weights_key_list)):
             sub_weight = w[start_index : start_index + self.weights_num_list[i]]
             if len(sub_weight) > 0:
-                weight_dic[self.weights_key_list[i]] = sub_weight.view(
-                    self.weights_size_list[i]
-                )
+                weight_dic[self.weights_key_list[i]] = sub_weight.view(self.weights_size_list[i])
             else:
                 weight_dic[self.weights_key_list[i]] = torch.tensor(0)
             start_index += self.weights_num_list[i]
         self.model.load_state_dict(weight_dic)
 
-    def _data_reshape(
-        self, imgs: Tensor, labels: Tensor | None = None
-    ) -> tuple[Tensor, Tensor | None]:
+    def _data_reshape(self, imgs: Tensor, labels: Tensor | None = None) -> tuple[Tensor, Tensor | None]:
         if len(imgs.size()) < 3:
             x_image = imgs.view([-1, self.channels, self.img_size, self.img_size])
             if labels is not None:
@@ -329,9 +331,7 @@ class Models:
             f1 = 0.0
         return round(f1, 5)
 
-    def predict(
-        self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device
-    ) -> Tensor:
+    def predict(self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device) -> Tensor:
         self.assign_weight(w)
         img, _ = self._data_reshape(img)
         with torch.no_grad():
@@ -340,9 +340,7 @@ class Models:
 
         return pred
 
-    def train_one_epoch(
-        self, data_train_loader: DataLoader, device: torch.device
-    ) -> None:
+    def train_one_epoch(self, data_train_loader: DataLoader, device: torch.device) -> None:
         self.model.train()
         for _, (images, labels) in enumerate(data_train_loader):
             images, labels = Variable(images).to(device), Variable(labels).to(device)

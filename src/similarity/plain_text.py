@@ -10,7 +10,9 @@ from itertools import combinations
 from typing import Callable
 
 from torch import Tensor
-from config import config
+from config import load_config, Config
+
+config = load_config("config.yaml")
 
 
 def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
@@ -21,9 +23,7 @@ def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
     temp2: Tensor = vector2 / norm2
 
     # Compute the dot product and return it as a float
-    dot_product = float(
-        temp1.dot(temp2).item()
-    )  # Ensure it returns a scalar as a float
+    dot_product = float(temp1.dot(temp2).item())  # Ensure it returns a scalar as a float
     return float(dot_product)
 
 
@@ -66,12 +66,8 @@ def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
     return matrix
 
 
-def graph_selector(
-    weights_list: list[Tensor], size: int, tolerance: float
-) -> list[int]:
-    assert isinstance(
-        weights_list[0], Tensor
-    ), "not implemented for flattenweight = false"
+def graph_selector(weights_list: list[Tensor], size: int, tolerance: float) -> list[int]:
+    assert isinstance(weights_list[0], Tensor), "not implemented for flattenweight = false"
     assert config.n_nodes is not None
     matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.selection])
 
@@ -87,9 +83,7 @@ def graph_selector(
     components = [list(c) for c in components]
     nodes: list[int] = []
     for component in components:
-        sample_percent = max(
-            floor((len(component) / config.n_nodes) * size), 1
-        )  # always sample at least 1
+        sample_percent = max(floor((len(component) / config.n_nodes) * size), 1)  # always sample at least 1
         nodes.extend(random.sample(component, sample_percent))
     return nodes
 
@@ -121,13 +115,29 @@ def kmeans_selector(
     weights_list: list[Tensor],
     train_loader_list: list[torch.utils.data.DataLoader],
     val_targets: Tensor,
+    bad_subset: list[int],
+    label_tampering: str,
     size: int,
     # tolerance: float,
 ) -> list[int]:
     # WARNING: only works for MNIST and CIFAR
     local_targets = []
-    for loader in train_loader_list:
-        targets =[]
+    for i, loader in enumerate(train_loader_list):
+        targets = []
+        if i in bad_subset:
+            if label_tampering == "random":
+                for images, labels in loader:
+                    targets.extend(torch.randint(0, 10, (len(labels),)))
+            elif label_tampering == "reverse":
+                for images, labels in loader:
+                    targets.extend(9 - labels)
+            elif label_tampering == "zero":
+                for images, labels in loader:
+                    targets.extend(torch.zeros_like(labels))
+            else:
+                raise Exception("Unknown label tampering method name")
+            local_targets.append(torch.tensor(targets))
+            continue
         for images, labels in loader:
             targets.extend(labels)
         local_targets.append(torch.tensor(targets))
@@ -135,20 +145,17 @@ def kmeans_selector(
     divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
     tolerance = get_tolerance(divergences)
     new_weights_list = [
-        weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i])
-        for i, x in enumerate(divergences)
+        weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
     ]
-    non_zero_indices = [
-        i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)
-    ]
+    non_zero_indices = [i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)]
     non_zero_vectors = torch.stack([new_weights_list[i] for i in non_zero_indices])
-    #convert non_zero_vectors to numpy
+    # convert non_zero_vectors to numpy
     non_zero_vectors = non_zero_vectors.cpu().numpy()
     kmeans = KMeans(n_clusters=size)
     kmeans.fit(non_zero_vectors)
     # chose one example from each cluster closest to the center
     centers = kmeans.cluster_centers_
-    #convet back to torch
+    # convet back to torch
     centers = torch.tensor(centers).to(config.device)
     non_zero_vectors = torch.tensor(non_zero_vectors).to(config.device)
     closest: list[int] = []
@@ -161,6 +168,7 @@ def kmeans_selector(
         closest.append(non_zero_indices[closest_idx])
 
     return closest
+
 
 def get_tolerance(divergences: list[float]):
     return np.percentile(divergences, 85)
