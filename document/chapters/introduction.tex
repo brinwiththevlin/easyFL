@@ -1,19 +1,35 @@
-\chapter{introduction}
-
-[your introduction content goes here.]
+\chapter{Introduction}
 
 \section{Background}
+Federated learning (FL) is a relatively new approach to machine learning introduced by McMahan et al. (2017) \cite{mcmahan2017communication}. It allows multiple devices, or "clients," to work together to train a shared model without sharing their private data. This setup is particularly important in fields like healthcare, finance, and mobile applications, where privacy is a major concern. For example, medical data from hospitals or personal data from smartphones can be used for training without leaving the device. This ability to protect privacy has made federated learning a popular and widely discussed topic.
 
-[Background information.]
+However, while FL offers exciting possibilities, it also comes with its own set of problems. One of the biggest challenges is dealing with differences in the way data is distributed across clients. In many real-world scenarios, the data on each client does not follow the same pattern, which is referred to as non-independent and identically distributed (non-IID) data. These differences can make it harder for the global model to learn effectively, leading to slower progress, lower accuracy, and biased results \cite{kairouz2021advances}.
 
 \section{Problem Statement}
+When it comes to selecting which clients participate in federated learning, most existing methods rely on random or uniform selection strategies. While these methods are simple and easy to use, they often overlook the differences in data across clients. This can make the learning process less efficient and result in a model that does not fully represent the global population \cite{zhao2018federated}. Additionally, the presence of malicious or untrustworthy clients can further degrade model performance. Malicious clients may intentionally provide misleading updates, while others may have unrepresentative data that skews the global model. Addressing these issues requires a more thoughtful approach to client selection.
 
-[Describe the problem.]
+This thesis focuses on a new way to select clients by using the known global class distribution of the dataset. By considering how the data is distributed overall, it is possible to create a smarter client selection process that addresses these challenges. Despite the potential benefits, this approach has not been widely explored in existing research, leaving a gap that this work aims to fill.
 
-\section{Research Objectives}
+\section{Overview of Proposed Methodology}
+This thesis proposes a client selection algorithm that takes advantage of the global class distribution to improve model training in federated learning. The algorithm works in two main steps:
 
-[Outline your objectives.]
+\begin{enumerate}
+    \item \textbf{Elimination Based on Kullback-Leibler (KL) Divergence}: In the first step, clients whose local data distributions are significantly different from the global distribution are removed. This step is motivated by the need to exclude clients that may be malicious or have unrepresentative data, as such clients can harm the overall training process. KL divergence, a common method for comparing probability distributions, is used to measure how much each client's data differs from the global pattern \cite{hershey2007approximating}. Only clients with distributions similar to the global one are kept for the next step.
+    \item \textbf{K-Means Clustering for Client Selection}: In the second step, the remaining clients are grouped into clusters using the k-means algorithm. Within each cluster, the client whose data is closest to the cluster center is selected. This ensures that the selected clients are both representative of their cluster and diverse overall \cite{lloyd1982least}.
+\end{enumerate}
+
+By combining these two steps, the algorithm ensures that the selected clients contribute meaningfully to the global model while reducing the negative effects of non-IID data, unrepresentative clients, and potentially malicious participants.
 
 \section{Thesis Organization}
+This thesis is organized into several chapters to guide the reader through the research:
 
-[Describe how the thesis is organized.]
+\begin{itemize}
+    \item \textbf{Chapter 2: Literature Review} provides an overview of related work in federated learning, focusing on client selection methods and strategies for handling non-IID data.
+    \item \textbf{Chapter 3: Methodology} explains the proposed client selection algorithm in detail, including the rationale and technical steps involved.
+    \item \textbf{Chapter 4: Experiments and Results} presents the experiments conducted to test the algorithm, along with the results and evaluation metrics used to measure its performance.
+    \item \textbf{Chapter 5: Discussion} analyzes the results, discussing their implications, strengths, and limitations.
+    \item \textbf{Chapter 6: Conclusion} summarizes the main findings of the research and suggests directions for future work.
+\end{itemize}
+
+This structure ensures that each aspect of the research is covered thoroughly, from the initial background to the final conclusions.
+

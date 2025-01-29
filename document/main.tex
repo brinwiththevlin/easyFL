@@ -48,139 +48,25 @@
 % Begin Document
 \begin{document}
 
-
-% Title Page for University of Cincinnati Master's Thesis
-\begin{titlepage}
-    \begin{center}
-        % \vspace*{1in} % Adjusted initial vertical space
-        \pagestyle{empty}
-        % Title
-        {\large\textbf{A Long Placeholder Title to Represent Writing an Effective Master's Thesis in the Arts Program}}\\[1.25in]
-
-        % Submission Details
-        A thesis submitted to the\\
-        Graduate College\\
-        of the University of Cincinnati\\
-        in partial fulfillment of the\\
-        requirements for the degree of\\[0.25in]
-
-        % Degree
-        \textbf{Master of Science}\\[0.25in]
-
-        % Department Information
-        in the Department of Communication\\
-        of the College of Arts and Sciences\\
-
-        % Author
-        by\\[0.25in]
-        Bryan J. Cora\\
-        B.A., University of Cincinnati\\
-
-        % Date
-        \textbf{April 2022}\\[1 in]
-
-        % Committee Chair
-        Committee Chair: A. B. Cooper, Ph.D.
-    \end{center}
-\end{titlepage}
-
-\clearpage
-
-% Abstract
+% Include front matter sections
+\include{chapters/titlepage}
 \pagenumbering{roman}
 \setcounter{page}{2}
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
+\include{chapters/abstract}
+\include{chapters/acknowledgments}
+\include{chapters/toc}
 
-[Your abstract goes here.]
-
-\clearpage
-
-% Blank Page or Copyright Notice
-\chapter*{}
-\thispagestyle{empty}
-\clearpage
-
-% Preface or Acknowledgments (Optional)
-\chapter*{Acknowledgments}
-\addcontentsline{toc}{chapter}{Acknowledgments}
-
-[Your acknowledgments go here.]
-
-\clearpage
-
-% Table of Contents
-\tableofcontents
-\clearpage
-
-% List of Figures (if needed)
-\listoffigures
-\addcontentsline{toc}{chapter}{List of Figures}
-\clearpage
-
-% List of Tables (if needed)
-\listoftables
-\addcontentsline{toc}{chapter}{List of Tables}
-\clearpage
-
-% List of Illustrations (if needed)
-% \listofillustrations
-% \addcontentsline{toc}{chapter}{List of Illustrations}
-% \clearpage
-
-% List of Symbols (if needed)
-% \chapter*{List of Symbols}
-% \addcontentsline{toc}{chapter}{List of Symbols}
-% [Your list of symbols here]
-% \clearpage
-
-% Main Content
+% Main content sections
 \pagenumbering{arabic}
+\include{chapters/introduction}
+\include{chapters/literature_review}
+\include{chapters/methodology}
+\include{chapters/results}
+\include{chapters/discussion}
+\include{chapters/conclusion}
 
-% Chapters
-\input{chapters/introduction}
-\input{chapters/literature_review}
-\input{chapters/methodology}
-\input{chapters/results}
-\input{chapters/discussion}
-\input{chapters/conclusion}
-
-
-
-\chapter{Literature Review}
-
-[Your literature review goes here.]
-
-\chapter{Methodology}
-
-[Your methodology content goes here.]
-
-\chapter{Experiments and Results}
-
-[Your experiments and results go here.]
-
-
-
-% Glossary (if needed)
-% \chapter*{Glossary}
-% \addcontentsline{toc}{chapter}{Glossary}
-% [Your glossary here]
-% \clearpage
-
-% References
-\clearpage
-\addcontentsline{toc}{chapter}{References}
-\bibliographystyle{apalike} % Adjust bibliography style as needed
-\bibliography{references} % Ensure you have a references.bib file
-
-% Appendices (if needed)
-\appendix
-\chapter{[Appendix Title]}
-
-[Appendix content goes here.]
-
-% Index (if needed)
-% \printindex
+% Back matter sections
+\include{chapters/references}
+\include{chapters/appendix}
 
 \end{document}
-
