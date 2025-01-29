@@ -4,7 +4,7 @@ from typing import Iterable
 from torch.utils.data import Dataset, DataLoader
 import torch
 from torchvision.datasets import VisionDataset
-from config import config
+from config import load_config, Config
 from similarity.plain_text import kmeans_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
@@ -38,12 +38,25 @@ class DatasetSplit(Dataset):
 @click.option("--per_round", default=10, help="clints to select per round")
 @click.option(
     "--selection",
-    default="cosine",
-    type=click.Choice(["cosine", "pearson", "kernel", "random"]),
+    default="kl-kmeans",
+    type=click.Choice(["kl-kmeans","random"]),
 )
 @click.option("--res_path", default=None, help="path to save results")
-@click.option("--tolerance", type=float, default=None, help="tolerance for similarity")
 @click.option("--under_rep", type=int, default=3, help="number of under-represented classes")
+@click.option("--bad_nodes", type=int, default=0, help="number of bad nodes")
+@click.option("--dataset", default="MNIST", help="dataset to use")
+@click.option(
+    "--label_tampering",
+    type=click.Choice(["none", "zero", "reverse", "random"]),
+    default="none",
+    help="label tampering",
+)
+@click.option(
+    "--weight_tampering",
+    type=click.Choice(["none", "large_neg", "reverse", "random"]),
+    default="none",
+    help="weight tampering",
+)
 def main(
     iterations: int,
     iid: bool,
@@ -51,8 +64,11 @@ def main(
     per_round: int,
     selection: str,
     res_path: str | None,
-    tolerance: float | None,
-    under_rep: int | None
+    under_rep: int | None,
+    bad_nodes: int,
+    dataset: str,
+    label_tampering: str,
+    weight_tampering: str,
 ) -> None:
     print(
         f"Arguments received: iterations={iterations}, iid={iid}, clients={clients}, per_round={per_round}, selection={selection}, res_path={res_path}"
@@ -60,24 +76,26 @@ def main(
     if clients is not None and per_round > clients:
         raise ValueError("per_round can't be higher the thotal number of clients")
 
+    bad_subset = random.sample(range(clients), bad_nodes)
+    config = Config()
     config.parse_args(
-        iterations, iid, clients, per_round, selection, res_path, tolerance, under_rep
+        iterations, iid, clients, per_round, selection, res_path, under_rep, dataset, label_tampering, weight_tampering
     )
+    config.save_config()
+    config = load_config()
+    
+
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
     torch.manual_seed(config.seed)  # cpu
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
 
-    data_train, data_test, data_validate = load_data(
-        config.dataset, config.dataset_file_path, config.model_name
-    )
+    data_train, data_test, data_validate = load_data(config.dataset, config.dataset_file_path, config.model_name)
     data_train_loader = DataLoader(
         data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
     )  # num_workers=8
-    data_test_loader = DataLoader(
-        data_test, batch_size=config.batch_size_eval, num_workers=0
-    )  # num_workers=8
+    data_test_loader = DataLoader(data_test, batch_size=config.batch_size_eval, num_workers=0)  # num_workers=8
     # data_validation_loader = DataLoader(
     #     data_validate, batch_size=config.batch_size_eval, num_workers=0
     # )
@@ -96,11 +114,9 @@ def main(
     )
 
     stat = CollectStatistics(results_file_name=config.fl_results_file_path)
-    train_loader_list: list[DataLoader]= []
+    train_loader_list: list[DataLoader] = []
     dataiter_list = []
-    weight_list: list[torch.Tensor | dict] = [
-        torch.empty(0) for _ in range(config.n_nodes)
-    ]
+    weight_list: list[torch.Tensor | dict] = [torch.empty(0) for _ in range(config.n_nodes)]
     for n in range(config.n_nodes):
         train_loader_list.append(
             DataLoader(
@@ -122,20 +138,18 @@ def main(
         w_global_prev = copy.deepcopy(w_global)
 
         if config.selection == "random":
-            node_subset = np.random.choice(
-                range(config.n_nodes), config.n_nodes_in_each_round, replace=False
-            )
+            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
         else:
             if first:
-                node_subset = np.random.choice(
-                    range(config.n_nodes), config.n_nodes_in_each_round, replace=False
-                )
+                node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
                 first = False
             else:
                 node_subset = kmeans_selector(
                     weight_list,  # type: ignore
                     train_loader_list,
                     data_validate.targets,  # type: ignore
+                    bad_subset,
+                    label_tampering,
                     size=config.n_nodes_in_each_round,
                     # tolerance=config.tolerance,
                 )
@@ -167,6 +181,17 @@ def main(
                 loss.backward()
                 model.optimizer.step()
 
+            if n in bad_subset:
+                if config.weight_tampering == "large_neg":
+                    model.tamper_weights_large_negative()
+                elif config.weight_tampering == "reverse":
+                    model.tamper_weights_reverse()
+                elif config.weight_tampering == "random":
+                    model.tamper_weights_random()
+                elif config.weight_tampering == "none":
+                    pass
+                else:
+                    raise Exception("Unknown weight tampering method name")
             w = model.get_weight()  # deepcopy is already included here
             weight_list[n] = w
 
@@ -220,9 +245,7 @@ def main(
             w_global = copy.deepcopy(w_global_prev)
 
         if num_iter - last_output >= config.num_iter_one_output:
-            stat.collect_stat_global(
-                num_iter, model, data_train_loader, data_test_loader, w_global
-            )
+            stat.collect_stat_global(num_iter, model, data_train_loader, data_test_loader, w_global)
             last_output = num_iter
 
         if num_iter >= config.max_iter:

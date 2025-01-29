@@ -10,9 +10,9 @@ def get_model(
     model_name: str,
     dataset: str,
     rand_seed: int | None = None,
-    step_size: float=0.001,
-    device: torch.device =torch.device("cuda"),
-    flatten_weight: bool=False,
+    step_size: float = 0.001,
+    device: torch.device = torch.device("cuda"),
+    flatten_weight: bool = False,
 ):
     img_size, channels, num_classes = get_data_info(dataset, model_name)
 

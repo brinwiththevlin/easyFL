@@ -1,43 +1,36 @@
 import click
-from config import config
+from config import load_config  
 import os
 import pandas as pd
 import plotly.express as px
 
+config = load_config()
 
 @click.command()
 @click.option("--results_dir_name", default=None, help="path to results directory")
-def generate_multitrace_figures(results_dir_name: str | None = None):
+@click.option("--bad_nodes", default=1, help="number of malicious nodes")
+@click.option("--dataset", type=click.Choice(['MNIST','cifar10']))
+@click.option("--label_tampering", type=click.Choice(["none", "zero", "reverse", "random"]), help="style of label tampering")
+@click.option("--weight_tampering", type=click.Choice(["none", "large_neg", "reverse", "random"]), help="style of weight tampering")
+def generate_multitrace_figures(results_dir_name: str | None = None,bad_nodes: int = 1, dataset: str = "MNIST", label_tampering: str="none", weight_tampering:str="none"):
     if results_dir_name is None:
         results_dir_name = config.results_file_path
 
-    run_dirs = [
-        d
-        for d in os.listdir(results_dir_name)
-        if os.path.isdir(os.path.join(results_dir_name, d))
-    ]
+    run_dirs = [d for d in os.listdir(results_dir_name) if os.path.isdir(os.path.join(results_dir_name, d))]
     iids = set([d for d in run_dirs if "noniid" not in d])
     noniids = set(run_dirs) - iids
 
     client_splits = set(["_".join(d.split("_")[3:5]) for d in run_dirs])
 
-    iids_by_clients = {
-        d: [c for c in iids if d in c] for d in client_splits
-    }
-    noniids_by_clients = {
-        d: [c for c in noniids if d in c] for d in client_splits
-    }
+    iids_by_clients = {d: [c for c in iids if d in c] for d in client_splits}
+    noniids_by_clients = {d: [c for c in noniids if d in c] for d in client_splits}
 
     for clients, dirs in iids_by_clients.items():
-        resullt_dfs = [
-            pd.read_csv(os.path.join(results_dir_name, d, "results.csv")) for d in dirs
-        ]
+        resullt_dfs = [pd.read_csv(os.path.join(results_dir_name, d, "results.csv")) for d in dirs]
         # add a column for selection/similarity: (random, cosine, pearson, kernel)
         # ex: MNIST_ModelCNNMnist_iid_10_5_cosine_09-26-16:26/
 
-        results_dfs = [
-            df.assign(selection=d.split("_")[-2]) for df, d in zip(resullt_dfs, dirs)
-        ]
+        results_dfs = [df.assign(selection=d.split("_")[-2]) for df, d in zip(resullt_dfs, dirs)]
         results_df = pd.concat(results_dfs)
 
         metrics = list(set(results_df.columns) - {"num_iter", "selection"})
@@ -48,23 +41,17 @@ def generate_multitrace_figures(results_dir_name: str | None = None):
                 y=metric,
                 color="selection",
                 labels={"x": "iterations", "y": metric},
-                title=f"{metric} over time for {clients} clients",
+                title=f"{metric} over time for {clients} clients:\n{dataset}-bad={bad_nodes}-l={label_tampering}-w={weight_tampering}",
             )
-            png_file = os.path.join(
-                results_dir_name, f"iid_{clients}_{metric}_over_time.png"
-            )
+            png_file = os.path.join(results_dir_name, f"iid_{clients}_{metric}_over_time.png")
             fig.write_image(png_file)
             print(f"Figure saved as {png_file}")
 
     for clients, dirs in noniids_by_clients.items():
-        resullt_dfs = [
-            pd.read_csv(os.path.join(results_dir_name, d, "results.csv")) for d in dirs
-        ]
+        resullt_dfs = [pd.read_csv(os.path.join(results_dir_name, d, "results.csv")) for d in dirs]
         # add a column for selection/similarity: (random, cosine, pearson, kernel)
         # ex: MNIST_ModelCNNMnist_iid_10_5_cosine_09-26-16:26/
-        results_dfs = [
-            df.assign(selection=d.split("_")[-2]) for df, d in zip(resullt_dfs, dirs)
-        ]
+        results_dfs = [df.assign(selection=d.split("_")[-2]) for df, d in zip(resullt_dfs, dirs)]
         results_df = pd.concat(results_dfs)
 
         metrics = list(set(results_df.columns) - {"num_iter", "selection"})
@@ -77,9 +64,7 @@ def generate_multitrace_figures(results_dir_name: str | None = None):
                 labels={"x": "iterations", "y": metric},
                 title=f"{metric} over time for {clients} clients",
             )
-            png_file = os.path.join(
-                results_dir_name, f"noniid_{clients}_{metric}_over_time.png"
-            )
+            png_file = os.path.join(results_dir_name, f"noniid_{clients}_{metric}_over_time.png")
             fig.write_image(png_file)
             print(f"Figure saved as {png_file}")
 

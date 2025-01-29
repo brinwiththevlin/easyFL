@@ -1,3 +1,4 @@
+myenv/
 */easyFL.egg-info/
 */*.json
 .idea/
@@ -6,3 +7,5 @@ __pycache__
 */results/
 */dataset_data_files/
 **/*.log
+config.yaml
+/build/
