@@ -174,8 +174,8 @@ run_simulations() {
 # Parameter arrays
 BAD_NODES=(1)
 DATASETS=("MNIST" "cifar10")
-LABEL_TAMPERING=("zero" "reverse" "random")
-WEIGHT_TAMPERING=("none")
+LABEL_TAMPERING=( "zero" "reverse" "random", "none")
+WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random" )
 
 # Nested loops to run all parameter combinations
 for bad_nodes in "${BAD_NODES[@]}"; do

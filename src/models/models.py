@@ -156,16 +156,16 @@ class Models:
                 return copy.deepcopy(state)
 
     def tamper_weights_large_negative(self) -> None:
-        for k, v in self.model.state_dict().items():
-            self.model.state_dict()[k] = -9999999
+        tampered_state = {k: torch.ones_like(v) * -99999 for k, v in self.model.state_dict().items()}
+        self.model.load_state_dict(tampered_state)
 
     def tamper_weights_reverse(self) -> None:
-        for k, v in self.model.state_dict().items():
-            self.model.state_dict()[k] = -v
+        tampered_state = {k: torch.ones_like(v) * -1 for k, v in self.model.state_dict().items()}
+        self.model.load_state_dict(tampered_state)
 
     def tamper_weights_random(self) -> None:
-        for k, v in self.model.state_dict().items():
-            self.model.state_dict()[k] = torch.rand_like(v)
+        tampered_state = {k: torch.rand_like(v) for k, v in self.model.state_dict().items()}
+        self.model.load_state_dict(tampered_state)
 
     def assign_weight(self, w: Tensor | dict[str, Any]) -> None:
         if self.flatten_weight:

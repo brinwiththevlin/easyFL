@@ -20,6 +20,7 @@ class CollectStatistics:
         )
         self.summary_write_test = SummaryWriter(log_dir=os.path.join(config.results_file_path, config.comments, "test"))
 
+        os.makedirs(os.path.join(config.results_file_path, config.comments), exist_ok=True)
         with open(results_file_name, "a") as f:
             f.write(
                 "num_iter,lossValue,trainAccuracy,predictionAccuracy,predictionPrecision,predictionRecall,predictionF1\n"

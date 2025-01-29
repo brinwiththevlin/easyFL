@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 import torch
 import click
@@ -61,8 +60,6 @@ class Config:
             + str(self.n_nodes_in_each_round)
             + "_"
             + self.selection
-            + "_"
-            + datetime.now().strftime("%m-%d-%H:%M")
         )
 
         if res_path:

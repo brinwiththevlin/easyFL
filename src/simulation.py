@@ -4,7 +4,7 @@ from typing import Iterable
 from torch.utils.data import Dataset, DataLoader
 import torch
 from torchvision.datasets import VisionDataset
-from config import load_config
+from config import load_config, Config
 from similarity.plain_text import kmeans_selector
 from datasets.dataset import load_data
 from models.get_model import get_model
@@ -77,6 +77,11 @@ def main(
         raise ValueError("per_round can't be higher the thotal number of clients")
 
     bad_subset = random.sample(range(clients), bad_nodes)
+    config = Config()
+    config.parse_args(
+        iterations, iid, clients, per_round, selection, res_path, under_rep, dataset, label_tampering, weight_tampering
+    )
+    config.save_config()
     config = load_config()
     
 

@@ -1,13 +1,18 @@
 import click
-from config import config
+from config import load_config  
 import os
 import pandas as pd
 import plotly.express as px
 
+config = load_config()
 
 @click.command()
 @click.option("--results_dir_name", default=None, help="path to results directory")
-def generate_multitrace_figures(results_dir_name: str | None = None):
+@click.option("--bad_nodes", default=1, help="number of malicious nodes")
+@click.option("--dataset", type=click.Choice(['MNIST','cifar10']))
+@click.option("--label_tampering", type=click.Choice(["none", "zero", "reverse", "random"]), help="style of label tampering")
+@click.option("--weight_tampering", type=click.Choice(["none", "large_neg", "reverse", "random"]), help="style of weight tampering")
+def generate_multitrace_figures(results_dir_name: str | None = None,bad_nodes: int = 1, dataset: str = "MNIST", label_tampering: str="none", weight_tampering:str="none"):
     if results_dir_name is None:
         results_dir_name = config.results_file_path
 
@@ -36,7 +41,7 @@ def generate_multitrace_figures(results_dir_name: str | None = None):
                 y=metric,
                 color="selection",
                 labels={"x": "iterations", "y": metric},
-                title=f"{metric} over time for {clients} clients",
+                title=f"{metric} over time for {clients} clients:\n{dataset}-bad={bad_nodes}-l={label_tampering}-w={weight_tampering}",
             )
             png_file = os.path.join(results_dir_name, f"iid_{clients}_{metric}_over_time.png")
             fig.write_image(png_file)
