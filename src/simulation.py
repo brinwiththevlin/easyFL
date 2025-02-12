@@ -16,7 +16,14 @@ import numpy as np
 import random
 import copy
 import sys
+import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    filename="bad_filter.log",  # Log file destination
+    filemode="a",  # Overwrite the log file each time, use "a" for append
+)
 
 class DatasetSplit(Dataset):
     def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
@@ -70,13 +77,6 @@ def main(
     label_tampering: str,
     weight_tampering: str,
 ) -> None:
-    print(
-        f"Arguments received: iterations={iterations}, iid={iid}, clients={clients}, per_round={per_round}, selection={selection}, res_path={res_path}"
-    )
-    if clients is not None and per_round > clients:
-        raise ValueError("per_round can't be higher the thotal number of clients")
-
-    bad_subset = random.sample(range(clients), bad_nodes)
     config = Config()
     config.parse_args(
         iterations, iid, clients, per_round, selection, res_path, under_rep, dataset, label_tampering, weight_tampering
@@ -91,11 +91,23 @@ def main(
     torch.cuda.manual_seed(config.seed)  # gpu
     torch.backends.cudnn.deterministic = True  # cudnn
 
+    ctx = click.get_current_context()
+    arg_str = " ".join(f"{k}={v}" for k, v in ctx.params.items())
+    print("Arguments received: " + arg_str)
+    if clients is not None and per_round > clients:
+        raise ValueError("per_round can't be higher the thotal number of clients")
+
+    logging.info(f"Arguments received: {arg_str}")
+
+
+    bad_subset = random.sample(range(clients), bad_nodes)
+    
+
     data_train, data_test, data_validate = load_data(config.dataset, config.dataset_file_path, config.model_name)
     data_train_loader = DataLoader(
         data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
     )  # num_workers=8
-    data_test_loader = DataLoader(data_test, batch_size=config.batch_size_eval, num_workers=0)  # num_workers=8
+    data_test_loader = DataLoader(data_test, batch_size=config.batch_size_eval, shuffle=True, num_workers=0)  # num_workers=8
     # data_validation_loader = DataLoader(
     #     data_validate, batch_size=config.batch_size_eval, num_workers=0
     # )

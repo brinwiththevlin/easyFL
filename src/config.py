@@ -37,7 +37,7 @@ class Config:
         self.batch_size_train = 32
         self.batch_size_eval = 256
         self.max_iter = 1000  # Maximum number of iterations to run
-        self.seed = 1
+        self.seed = 12345
         self.aggregation_method = "FedAvg"
         self.flatten_weight = True
         # self.iid = True

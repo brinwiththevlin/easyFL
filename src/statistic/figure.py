@@ -5,22 +5,40 @@ import pandas as pd
 import plotly.express as px
 
 
-def generate_figures(results_file_name: str | None = None):
+import os
+import pandas as pd
+import plotly.express as px
+from typing import Optional
+from config import load_config  
+
+config = load_config()
+
+def generate_figures(results_file_name: Optional[str] = None):
     if results_file_name is None:
         results_file_name = config.fl_results_file_path
-    results_df: pd.DataFrame = pd.read_csv(results_file_name)
-    metrics: list[str] = list(results_df.columns[1:])
-    path_header = results_file_name.removesuffix("results.csv")
+
+    results_df = pd.read_csv(results_file_name)
+
+    if "num_iter" not in results_df.columns:
+        print(f"Error: 'num_iter' column missing in {results_file_name}")
+        return
+
+    metrics = [col for col in results_df.columns if col != "num_iter"]
+    path_header = os.path.dirname(results_file_name)
 
     for metric in metrics:
-        metric_values = results_df[metric]
         fig = px.line(
-            metric_values,
-            x=results_df.num_iter,
-            y=metric_values.values,
-            labels={"x": "iterations", "y": metric},
+            results_df,
+            x="num_iter",
+            y=metric,
+            labels={"num_iter": "Iterations", metric: metric},
             title=f"{metric} over time for {config.comments}",
         )
-        png_file = f"{path_header}/{metric}_over_time.png"
-        fig.write_image(png_file)
+        fig.update_layout(
+            width=1200, height=800, font=dict(size=18), title_font=dict(size=22)
+        )
+
+        png_file = os.path.join(path_header, f"{metric}_over_time.png")
+        fig.write_image(png_file, scale=2, engine="kaleido")
         print(f"Figure saved as {png_file}")
+

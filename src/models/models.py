@@ -93,6 +93,11 @@ class Models:
         self.loss_fn = nn.CrossEntropyLoss().to(device)
         self._get_weight_info()
 
+    def get_first_layer_weight(self) -> Tensor:
+        with torch.no_grad():
+            state = self.model.state_dict()
+            return state[self.weights_key_list[0]].view(-1)
+        
     def weight_variable(self, tensor: Tensor, mean: float, std: float) -> Tensor:
         size = tensor.shape
         tmp = tensor.new_empty(size + (4,)).normal_()

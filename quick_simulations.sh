@@ -1,6 +1,7 @@
 #!/bin/bash
-
 set -e
+
+# filepath: /home/brinhasavlin/easyFL/quick_simulations.sh
 
 # Function to check if a simulation is complete
 check_simulation_complete() {
@@ -58,10 +59,10 @@ run_simulation_group() {
     for config in "${client_configs[@]}"; do
         read -r clients per_round <<< "$config"
         
-        # Compute bad_nodes as 10% of clients (rounded)
-        local bad_nodes=$(( (clients + 9) / 10 ))  # Ensures rounding up
+        # Compute bad_nodes as 10% of clients (rounded up)
+        local bad_nodes=$(( (clients + 9) / 10 ))
 
-        local base_path="simulation_bn${bad_nodes}_ds${dataset}_lt${label_tampering}_wt${weight_tampering}"
+        local base_path="quick_simulation_bn${bad_nodes}_ds${dataset}_lt${label_tampering}_wt${weight_tampering}"
 
         echo "Checking simulation group: $base_path with ${bad_nodes} bad nodes"
 
@@ -80,7 +81,7 @@ run_simulation_group() {
                     --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
 
                 python3 src/simulation.py \
-                    --iterations 1000 --iid --clients "$clients" --per_round "$per_round" \
+                    --iterations 500 --iid --clients "$clients" --per_round "$per_round" \
                     --selection "$selection" --under_rep 3 --res_path "$base_path" \
                     --bad_nodes "$bad_nodes" --dataset "$dataset" \
                     --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
@@ -97,7 +98,7 @@ run_simulation_group() {
                     --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
 
                 python3 src/simulation.py \
-                    --iterations 1000 --clients "$clients" --per_round "$per_round" \
+                    --iterations 500 --clients "$clients" --per_round "$per_round" \
                     --selection "$selection" --under_rep 3 --res_path "$base_path" \
                     --bad_nodes "$bad_nodes" --dataset "$dataset" \
                     --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
@@ -109,8 +110,7 @@ run_simulation_group() {
     local all_complete=true
     for config in "${client_configs[@]}"; do
         read -r clients per_round <<< "$config"
-        local bad_nodes=$(( (clients + 9) / 10 ))  # Recompute bad_nodes
-
+        local bad_nodes=$(( (clients + 9) / 10 ))
         for selection in "${selection_methods[@]}"; do
             if ! check_simulation_complete "$base_path" "$dataset" "$clients" "$per_round" "$selection" true || \
                ! check_simulation_complete "$base_path" "$dataset" "$clients" "$per_round" "$selection" false; then
@@ -134,14 +134,35 @@ run_simulation_group() {
 }
 
 # Main script execution
+
 DATASETS=("MNIST" "cifar10")
-LABEL_TAMPERING=("zero" "reverse" "random" "none")
+LABEL_TAMPERING=("zero" "reverse" "random")
 WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random")
 
+# Run batches for weight tampering (default label_tampering "none")
 for dataset in "${DATASETS[@]}"; do
-    for label_tampering in "${LABEL_TAMPERING[@]}"; do
-        for weight_tampering in "${WEIGHT_TAMPERING[@]}"; do
-            run_simulation_group "$dataset" "$label_tampering" "$weight_tampering"
-        done
+    for weight_tampering in "${WEIGHT_TAMPERING[@]}"; do
+        run_simulation_group "$dataset" "none" "$weight_tampering"
     done
 done
+
+# Run batches for label tampering (default weight_tampering "none")
+for dataset in "${DATASETS[@]}"; do
+    for label_tampering in "${LABEL_TAMPERING[@]}"; do
+        run_simulation_group "$dataset" "$label_tampering" "none"
+    done
+done
+
+# Once all simulation groups are finished, create a directory to store all quick simulation results
+TIME=$(date +%Y%m%d_%H%M%S)
+RESULTS_DIR="src/results/quick_sim_$TIME"
+mkdir -p "$RESULTS_DIR"
+
+# Optionally, you can move all simulation result directories into the new directory.
+mv src/results/quick_simulation* "$RESULTS_DIR"
+
+# Move the bad_filter.log file into the new results directory
+if [ -f "bad_filter.log" ]; then
+    mv bad_filter.log "$RESULTS_DIR/"
+    echo "Moved bad_filter.log to $RESULTS_DIR"
+fi
