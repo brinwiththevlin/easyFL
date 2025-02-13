@@ -135,9 +135,9 @@ run_simulation_group() {
 
 # Main script execution
 
-DATASETS=("MNIST" "cifar10")
-LABEL_TAMPERING=("zero" "reverse" "random")
-WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random")
+DATASETS=("MNIST")
+LABEL_TAMPERING=("zero" "reverse" "random" "none")
+WEIGHT_TAMPERING=("large_neg" "reverse" "random")
 
 # Run batches for weight tampering (default label_tampering "none")
 for dataset in "${DATASETS[@]}"; do
@@ -163,6 +163,9 @@ mv src/results/quick_simulation* "$RESULTS_DIR"
 
 # Move the bad_filter.log file into the new results directory
 if [ -f "bad_filter.log" ]; then
+    python3 ./report.py
     mv bad_filter.log "$RESULTS_DIR/"
     echo "Moved bad_filter.log to $RESULTS_DIR"
+    mv report.txt "$RESULTS_DIR/"
+    echo "Moved report.txt to $RESULTS_DIR"
 fi

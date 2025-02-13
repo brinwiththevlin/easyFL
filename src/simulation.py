@@ -48,9 +48,9 @@ class DatasetSplit(Dataset):
     default="kl-kmeans",
     type=click.Choice(["kl-kmeans","random"]),
 )
+@click.option("--bad_nodes", default=0, help="number of bad nodes")
 @click.option("--res_path", default=None, help="path to save results")
 @click.option("--under_rep", type=int, default=3, help="number of under-represented classes")
-@click.option("--bad_nodes", type=int, default=0, help="number of bad nodes")
 @click.option("--dataset", default="MNIST", help="dataset to use")
 @click.option(
     "--label_tampering",
@@ -72,10 +72,10 @@ def main(
     selection: str,
     res_path: str | None,
     under_rep: int | None,
-    bad_nodes: int,
     dataset: str,
     label_tampering: str,
     weight_tampering: str,
+    bad_nodes: int = 0,
 ) -> None:
     config = Config()
     config.parse_args(
@@ -100,9 +100,8 @@ def main(
     logging.info(f"Arguments received: {arg_str}")
 
 
-    bad_subset = random.sample(range(clients), bad_nodes)
+    bad_subset = random.sample(range(clients), clients // 10)
     
-
     data_train, data_test, data_validate = load_data(config.dataset, config.dataset_file_path, config.model_name)
     data_train_loader = DataLoader(
         data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
@@ -150,18 +149,25 @@ def main(
         w_global_prev = copy.deepcopy(w_global)
 
         if config.selection == "random":
-            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
+            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False).tolist()
+            if num_iter % config.num_iter_one_output == 0:
+                logging.info(f"selection at iteration {num_iter}: random selection: {node_subset}")
+                if set(node_subset) & set(bad_subset):
+                    logging.info(f"***{set(node_subset) & set(bad_subset)} nodes passed the filter***")
+                    continue
         else:
             if first:
                 node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
                 first = False
             else:
                 node_subset = kmeans_selector(
+                    model,
                     weight_list,  # type: ignore
                     train_loader_list,
                     data_validate.targets,  # type: ignore
                     bad_subset,
                     label_tampering,
+                    weight_tampering,
                     size=config.n_nodes_in_each_round,
                     # tolerance=config.tolerance,
                 )

@@ -22,7 +22,7 @@ logging.basicConfig(
     filemode="a",  # Overwrite the log file each time, use "a" for append
 )
 config: Config= load_config("config.yaml")
-ITERATION = 1
+ITERATION = 0
 
 
 def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
@@ -122,6 +122,7 @@ def kl_divergence(dataset1_targets, dataset2_targets, num_classes):
 
 
 def kmeans_selector(
+    model: torch.nn.Module,
     weights_list: list[Tensor],
     train_loader_list: list[torch.utils.data.DataLoader],
     val_targets: Tensor,
@@ -162,9 +163,12 @@ def kmeans_selector(
 
     divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
     tolerance = get_tolerance(divergences)
+    
+    count = model.weights_num_list[0]
     new_weights_list = [
-        weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
+        weights_list[i][:count] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
     ]
+    # new_weights_list = [weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)]
     non_zero_indices = [i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)]
     for n in bad_subset:
         if n not in non_zero_indices:
@@ -172,14 +176,25 @@ def kmeans_selector(
             filtered.append(n)
     non_zero_vectors = torch.stack([new_weights_list[i] for i in non_zero_indices]).cpu()
 
-    k = int(len(non_zero_vectors[0]) * 0.2)
+    k = int(len(non_zero_vectors[0])  * 0.2)
     norms = torch.norm(non_zero_vectors, dim=0)
     top_k_indices = torch.topk(norms, k=k, largest=True).indices
     non_zero_vectors = non_zero_vectors[:, top_k_indices].numpy()
 
+    lof = LocalOutlierFactor(n_neighbors=max(20, len(non_zero_vectors) - 1),contamination=0.1)
+    pred = lof.fit_predict(non_zero_vectors)
+    inlier_mask = pred == 1
+    non_zero_vectors = non_zero_vectors[inlier_mask]
+    non_zero_indices = [non_zero_indices[i] for i in range(len(non_zero_indices)) if inlier_mask[i]]
+    for n in bad_subset:
+        if n not in non_zero_indices and n not in filtered:
+            log_every_50(f"Node {n} filtered out by LOF")
+            filtered.append(n)
+
+
     # convert non_zero_vectors to numpy
     # non_zero_vectors = non_zero_vectors
-    kmeans = KMeans(n_clusters=size)
+    kmeans = KMeans(n_clusters=size//2, random_state=config.seed)
     kmeans.fit(non_zero_vectors)
     # chose one example from each cluster closest to the center
     centers = kmeans.cluster_centers_
@@ -191,9 +206,13 @@ def kmeans_selector(
         # Calculate distances between the center and all non-zero vectors
         distances = torch.norm(non_zero_vectors - center, dim=1)
         # Get the index of the closest vector within the non-zero vectors
-        closest_idx = int(torch.argmin(distances).item())
+        closest_idxs = torch.argsort(distances)[:2]
+        for closest_idx in closest_idxs:
+            # Get the index of the closest vector within the non-zero vectors
+           closest.append(non_zero_indices[closest_idx]) 
+        # closest_idx = int(torch.argmin(distances).item())
         
-        closest.append(non_zero_indices[closest_idx])
+        # closest.append(non_zero_indices[closest_idx])
 
     for n in bad_subset:
         if n not in closest and n not in filtered:
@@ -202,15 +221,18 @@ def kmeans_selector(
 
     if set(bad_subset)!= set(filtered):
         log_every_50(f"***{set(bad_subset) - set(filtered)} nodes passed the filter***")
-    ITERATION += 1
+    ITERATION += config.tau_setup
     return closest
 
 
 def get_tolerance(divergences: list[float]):
-    return np.percentile(divergences, 90)
+    return np.percentile(divergences, 80)
 
 
 def log_every_50(message: str, *args, **kwargs) -> None:
     global ITERATION
-    if ITERATION % (50 / config.tau_setup)== 0:
+    if ITERATION % (50)== 0:
         logging.info(message, *args, **kwargs)
+
+        
+        
