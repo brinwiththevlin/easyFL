@@ -1,4 +1,4 @@
-from src.config import load_config, Config
+from config import load_config, Config
 
 config = load_config()
 import pandas as pd

@@ -264,7 +264,7 @@ import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
 from torchvision.datasets import CIFAR10, CIFAR100, SVHN, VisionDataset
 from torchvision.datasets.mnist import MNIST
-from src.config import load_config, Config
+from config import load_config, Config
 
 config = load_config()
 

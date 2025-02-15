@@ -164,11 +164,11 @@ def kmeans_selector(
     divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
     tolerance = get_tolerance(divergences)
     
-    count = model.weights_num_list[0]
-    new_weights_list = [
-        weights_list[i][:count] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
-    ]
-    # new_weights_list = [weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)]
+    # count = model.weights_num_list[0]
+    # new_weights_list = [
+    #     weights_list[i][:count] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
+    # ]
+    new_weights_list = [weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)]
     non_zero_indices = [i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)]
     for n in bad_subset:
         if n not in non_zero_indices:

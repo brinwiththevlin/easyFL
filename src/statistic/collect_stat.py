@@ -2,7 +2,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from models.models import Models
 from tensorboardX import SummaryWriter
-from src.config import load_config, Config
+from config import load_config, Config
 
 config = load_config()
 import os

@@ -144,38 +144,8 @@ def main(
     num_iter = 0
     last_output = 0
 
-    first = True
     while True:
         w_global_prev = copy.deepcopy(w_global)
-
-        if config.selection == "random":
-            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False).tolist()
-            if num_iter % config.num_iter_one_output == 0:
-                logging.info(f"selection at iteration {num_iter}: random selection: {node_subset}")
-                if set(node_subset) & set(bad_subset):
-                    logging.info(f"***{set(node_subset) & set(bad_subset)} nodes passed the filter***")
-                    continue
-        else:
-            if first:
-                node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False)
-                first = False
-            else:
-                node_subset = kmeans_selector(
-                    model,
-                    weight_list,  # type: ignore
-                    train_loader_list,
-                    data_validate.targets,  # type: ignore
-                    bad_subset,
-                    label_tampering,
-                    weight_tampering,
-                    size=config.n_nodes_in_each_round,
-                    # tolerance=config.tolerance,
-                )
-                # node_subset = graph_selector(
-                #     weight_list,  # type: ignore
-                #     config.n_nodes_in_each_round,
-                #     config.tolerance,
-                # )
 
         w_accu = None
         for n in range(config.n_nodes):
@@ -213,18 +183,45 @@ def main(
             w = model.get_weight()  # deepcopy is already included here
             weight_list[n] = w
 
-            if n in node_subset:
-                if w_accu is None:  # accumulated weights
-                    w_accu = w
+
+        if config.selection == "random":
+            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False).tolist()
+            if num_iter % config.num_iter_one_output == 0:
+                logging.info(f"selection at iteration {num_iter}: random selection: {node_subset}")
+                if set(node_subset) & set(bad_subset):
+                    logging.info(f"***{set(node_subset) & set(bad_subset)} nodes passed the filter***")
+                    continue
+        else:
+            node_subset = kmeans_selector(
+                model,
+                weight_list,  # type: ignore
+                train_loader_list,
+                data_validate.targets,  # type: ignore
+                bad_subset,
+                label_tampering,
+                weight_tampering,
+                size=config.n_nodes_in_each_round,
+                # tolerance=config.tolerance,
+            )
+            # node_subset = graph_selector(
+            #     weight_list,  # type: ignore
+            #     config.n_nodes_in_each_round,
+            #     config.tolerance,
+            # )
+
+
+        for n in node_subset:
+            if w_accu is None:  # accumulated weights
+                w_accu = weight_list[n]
+            else:
+                if config.flatten_weight:
+                    assert isinstance(w_accu, torch.Tensor)
+                    w_accu += weight_list[n]
                 else:
-                    if config.flatten_weight:
-                        assert isinstance(w_accu, torch.Tensor)
-                        w_accu += w
-                    else:
-                        assert isinstance(w_accu, dict)
-                        assert isinstance(w, dict)
-                        for k in w_accu.keys():
-                            w_accu[k] += w[k]
+                    assert isinstance(w_accu, dict)
+                    assert isinstance( weight_list[n], dict)
+                    for k in w_accu.keys():
+                        w_accu[k] += weight_list[n][k]
 
         num_iter = num_iter + config.tau_setup
 

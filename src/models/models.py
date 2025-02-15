@@ -161,7 +161,7 @@ class Models:
                 return copy.deepcopy(state)
 
     def tamper_weights_large_negative(self) -> None:
-        tampered_state = {k: torch.ones_like(v) * -99999 for k, v in self.model.state_dict().items()}
+        tampered_state = {k: torch.ones_like(v) * -10 for k, v in self.model.state_dict().items()}
         self.model.load_state_dict(tampered_state)
 
     def tamper_weights_reverse(self) -> None:
