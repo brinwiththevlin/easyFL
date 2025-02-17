@@ -139,24 +139,6 @@ def kmeans_selector(
     filtered = []
     for i, loader in enumerate(train_loader_list):
         targets = []
-        if i in bad_subset:
-            if label_tampering == "random":
-                for images, labels in loader:
-                    targets.extend(torch.randint(0, 10, (len(labels),)))
-            elif label_tampering == "reverse":
-                for images, labels in loader:
-                    targets.extend(9 - labels)
-            elif label_tampering == "zero":
-                for images, labels in loader:
-                    targets.extend(torch.zeros_like(labels))
-            elif label_tampering == "none":
-                # targets.extend(labels)
-                for images, labels in loader:
-                    targets.extend(labels)
-            else:
-                raise Exception("Unknown label tampering method name")
-            local_targets.append(torch.tensor(targets))
-            continue
         for images, labels in loader:
             targets.extend(labels)
         local_targets.append(torch.tensor(targets))

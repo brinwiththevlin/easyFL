@@ -27,6 +27,7 @@ logging.basicConfig(
 
 class DatasetSplit(Dataset):
     def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
+        # self.dataset = copy.deepcopy(dataset)
         self.dataset = dataset
         self.idxs = list(idxs)
 
@@ -36,6 +37,18 @@ class DatasetSplit(Dataset):
     def __getitem__(self, item: int):
         image, label = self.dataset[self.idxs[item]]
         return image, label
+
+    def label_tampering(self, config):
+        if config.label_tampering == "zero":
+            self.dataset.targets[self.idxs] = 0
+        elif config.label_tampering == "reverse":
+            self.dataset.targets[self.idxs] = 9 - self.dataset.targets[self.idxs]
+        elif config.label_tampering == "random":
+            self.dataset.targets[self.idxs] = np.random.randint(0, 10, len(self.idxs))
+        elif config.label_tampering == "none":
+            self.dataset.targets[self.idxs] = self.dataset.targets[self.idxs]
+        else:
+            raise Exception("Unknown label tampering method name")
 
 
 @click.command()
@@ -129,9 +142,12 @@ def main(
     dataiter_list = []
     weight_list: list[torch.Tensor | dict] = [torch.empty(0) for _ in range(config.n_nodes)]
     for n in range(config.n_nodes):
+        data: DatasetSplit= DatasetSplit(data_train, dict_users[n])
+        if n in bad_subset:
+           data.label_tampering(config) 
         train_loader_list.append(
             DataLoader(
-                DatasetSplit(data_train, dict_users[n]),
+                data,
                 batch_size=config.batch_size_train,
                 shuffle=True,
             )
