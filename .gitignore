@@ -12,7 +12,6 @@ config.yaml
 
 # LaTeX build artifacts
 **/*.aux
-**/*.log
 **/*.toc
 **/*.lof
 **/*.lot
