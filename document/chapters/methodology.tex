@@ -1,3 +1,81 @@
 % Methodology
 \chapter{Methodology}
-[Describe the research design, materials, and methods used.]
+\section{Overview}
+This client selection method consists of two filters:
+\textbf{KL-Divergence on label distribution} and
+\textbf{Local Outlier Factor on model weights}.
+the first layer is designed to eliminate clients of which have data
+distributions significantly distinct from the understood distribution of the
+global population. Such detection is designed to detect both outliers and
+attackers. The second layer is for further outlier detection, this time
+focusing on model weights.
+Local outlier factor produces a mask for removing clients whose model weights
+are vastly different from everyone else. If a client is marked as an outlier it
+is highly likely that the model was tampered with so it should be removed.
+After applying both filters, we perfrom \textbf{K-Means clustering} on the
+model weights to create 5 clusters and pick the two most central clients from
+each cluster.
+
+% This experiment will run many scenarios to test the performance of the proposed
+% algorithm. The scenarios will be run on a simulated federated learning
+% environment, where clients are simulated using different datasets. The
+% performance of the algorithm will be evaluated based on the accuracy of the
+% global model, and the robustness to malicious clients.
+% The following sections describe the research design, materials, and methods
+% used in this study.
+\section{Theoretical Background}
+\section{Theoretical Background}
+
+This section reviews the theoretical concepts essential to our client selection
+strategy: the Kullback-Leibler (KL) Divergence and the Local Outlier Factor
+(LOF).
+
+\subsection{Kullback-Leibler (KL) Divergence}
+The KL divergence quantifies the difference between two probability
+distributions. For distributions \(P\) and \(Q\), it is defined as:
+
+\[
+    D_{KL}(P \parallel Q) = \sum_{i} P(i) \log\frac{P(i)}{Q(i)}
+\]
+
+In this formulation, \(P\) represents the probability distribution derived from
+a client's data, and \(Q\) signifies the expected global distribution. Within
+our methodology, KL divergence is utilized to pinpoint clients whose data
+distributions deviate significantly from the global norm, an indicator that
+they may be outliers or even malicious. For more details on this measure, see
+~\cite{cover1991elements} and~\cite{mcdonald2016measure}.
+
+\subsection{Local Outlier Factor (LOF)}
+The Local Outlier Factor (LOF) is an anomaly detection algorithm that
+determines the degree of isolation of a data point relative to its neighbors
+~\cite{breunig2000lof}. LOF computes a score for each data point, where a high
+score implies that the point is in a region of lower density compared to its
+surroundings. In our context, LOF is applied to the model weights received from
+each client. A high LOF score suggests that a client's model update is
+anomalously different, indicating potential tampering or discrepancies in its
+data distribution.
+
+Integrating both KL divergence and LOF enables our system to robustly filter
+out outliers before performing client selection via K-Means clustering,
+ensuring that only representative and reliable clients contribute to the global
+model.
+\section{Algorithm Design}
+
+\section{implementation Details}
+
+\section{Experimental Setup and Evaluation Metrics}
+
+% This experiment will run many scenarios to test the performance of the proposed
+% algorithm. The scenarios will be run on a simulated federated learning
+% environment, where clients are emulated using different datasets. The
+% performance of the algorithm will be evaluated based on the accuracy of the
+% global model, and the robustness to malicious clients.
+% The following sections describe the research design, materials, and methods
+% used in this study.
+
+% \section{Research Design}
+% each of the described simulations will be conducted on MNIST and CIFAR-10.
+% the experiment will be run  at three sizes. The first of which will be a small
+% systems with only 25 clients. the second will be a medium system with 50 clients
+% and the third will be a large system with 100 clients. in all three cases, each
+% client will be assigned a proportial subset of the dataset. 

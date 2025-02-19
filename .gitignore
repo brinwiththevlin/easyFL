@@ -9,3 +9,16 @@ __pycache__
 **/*.log
 config.yaml
 /build/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out 
