@@ -1,0 +1,34 @@
+\begin{thebibliography}{1}
+
+\bibitem{mcmahan2017communication}
+H~Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise~Aguera
+  y~Arcas.
+\newblock Communication-efficient learning of deep networks from decentralized
+  data.
+\newblock {\em Proceedings of the 20th International Conference on Artificial
+  Intelligence and Statistics (AISTATS)}, pages 1273--1282, 2017.
+
+\bibitem{kairouz2021advances}
+Peter Kairouz, H~Brendan McMahan, et~al.
+\newblock Advances and open problems in federated learning.
+\newblock {\em Foundations and Trends in Machine Learning}, 14(1--2):1--210,
+  2021.
+
+\bibitem{zhao2018federated}
+Yue Zhao, Meng Li, Liangzhen Lai, Naveen Suda, David Civin, and Vikas Chandra.
+\newblock Federated learning with non-iid data.
+\newblock In {\em arXiv preprint arXiv:1806.00582}, 2018.
+
+\bibitem{hershey2007approximating}
+John~R Hershey and Peder~A Olsen.
+\newblock Approximating the kullback-leibler divergence between gaussian
+  mixture models.
+\newblock {\em Proceedings of the IEEE International Conference on Acoustics,
+  Speech and Signal Processing (ICASSP)}, pages 317--320, 2007.
+
+\bibitem{lloyd1982least}
+Stuart~P Lloyd.
+\newblock Least squares quantization in pcm.
+\newblock {\em IEEE Transactions on Information Theory}, 28(2):129--137, 1982.
+
+\end{thebibliography}
