@@ -24,7 +24,6 @@ each cluster.
 % The following sections describe the research design, materials, and methods
 % used in this study.
 \section{Theoretical Background}
-\section{Theoretical Background}
 
 This section reviews the theoretical concepts essential to our client selection
 strategy: the Kullback-Leibler (KL) Divergence and the Local Outlier Factor
@@ -39,11 +38,13 @@ distributions. For distributions \(P\) and \(Q\), it is defined as:
 \]
 
 In this formulation, \(P\) represents the probability distribution derived from
-a client's data, and \(Q\) signifies the expected global distribution. Within
-our methodology, KL divergence is utilized to pinpoint clients whose data
-distributions deviate significantly from the global norm, an indicator that
-they may be outliers or even malicious. For more details on this measure, see
-~\cite{cover1991elements} and~\cite{mcdonald2016measure}.
+a client's data, and \(Q\) signifies the expected global distribution.
+\(D_{KL}(P \parallel Q)\) ranges fron 0 to \(\inf\), a larger score indicates
+that \(P\) and \(Q\) are further appart. Within our methodology, KL divergence
+is utilized to pinpoint clients whose data distributions deviate significantly
+from the global norm, an indicator that they may be outliers or even malicious.
+For more details on this measure, see~\cite{cover1991elements}
+and~\cite{mcdonald2016measure}.
 
 \subsection{Local Outlier Factor (LOF)}
 The Local Outlier Factor (LOF) is an anomaly detection algorithm that
