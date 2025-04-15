@@ -1,32 +1,67 @@
-
 import click
 import os
 import pandas as pd
 import plotly.express as px
 from typing import Optional
-from config import load_config  
+from config import load_config
+
+# config = load_config()
+
+# @click.command()
+# @click.option("--results_dir_name", default=None, help="Path to results directory")
+# @click.option("--bad_nodes", default=1, help="Number of malicious nodes")
+# @click.option("--dataset", type=click.Choice(['MNIST', 'cifar10']))
+# @click.option("--label_tampering", type=click.Choice(["none", "zero", "reverse", "random"]), help="Style of label tampering")
+# @click.option("--weight_tampering", type=click.Choice(["none", "large_neg", "reverse", "random"]), help="Style of weight tampering")
+# def generate_multitrace_figures(
+#     results_dir_name: Optional[str] = None,
+#     bad_nodes: int = 1,
+#     dataset: str = "MNIST",
+#     label_tampering: str = "none",
+#     weight_tampering: str = "none"
+# ):
+#     pass
+
+
+# import click
+# import os
+# import pandas as pd
+# import plotly.express as px
+# from typing import Optional
+# from config import load_config
 
 config = load_config()
+
 
 @click.command()
 @click.option("--results_dir_name", default=None, help="Path to results directory")
 @click.option("--bad_nodes", default=1, help="Number of malicious nodes")
-@click.option("--dataset", type=click.Choice(['MNIST', 'cifar10']))
-@click.option("--label_tampering", type=click.Choice(["none", "zero", "reverse", "random"]), help="Style of label tampering")
-@click.option("--weight_tampering", type=click.Choice(["none", "large_neg", "reverse", "random"]), help="Style of weight tampering")
+@click.option("--dataset", type=click.Choice(["MNIST", "cifar10"]))
+@click.option(
+    "--label_tampering",
+    type=click.Choice(["none", "zero", "reverse", "random"]),
+    help="Style of label tampering",
+)
+@click.option(
+    "--weight_tampering",
+    type=click.Choice(["none", "large_neg", "reverse", "random"]),
+    help="Style of weight tampering",
+)
 def generate_multitrace_figures(
     results_dir_name: Optional[str] = None,
     bad_nodes: int = 1,
     dataset: str = "MNIST",
     label_tampering: str = "none",
-    weight_tampering: str = "none"
+    weight_tampering: str = "none",
 ):
     # Use config value if no path is provided
     if results_dir_name is None:
         results_dir_name = config.results_file_path
 
     if not os.path.exists(results_dir_name):
-        print(f"Error: The specified results directory '{results_dir_name}' does not exist.")
+        print(
+            f"Error: The specified results directory '{results_dir_name}' does not exist."
+        )
         return
 
     # Extract simulation group (folder name of results_dir_name)
@@ -61,8 +96,14 @@ def generate_multitrace_figures(
     client_splits_noniid = {extract_client_config(os.path.basename(d)) for d in noniids}
 
     # Group results by client count
-    iids_by_clients = {c: [d for d in iids if extract_client_config(os.path.basename(d)) == c] for c in client_splits_iid}
-    noniids_by_clients = {c: [d for d in noniids if extract_client_config(os.path.basename(d)) == c] for c in client_splits_noniid}
+    iids_by_clients = {
+        c: [d for d in iids if extract_client_config(os.path.basename(d)) == c]
+        for c in client_splits_iid
+    }
+    noniids_by_clients = {
+        c: [d for d in noniids if extract_client_config(os.path.basename(d)) == c]
+        for c in client_splits_noniid
+    }
 
     def process_results(dirs, prefix):
         for clients, dirs in dirs.items():
@@ -72,11 +113,13 @@ def generate_multitrace_figures(
                 if not os.path.exists(csv_path):
                     print(f"Warning: Missing results.csv in {d}, skipping.")
                     continue
-                
+
                 df = pd.read_csv(csv_path)
-                
+
                 # Extract selection method dynamically
-                selection = os.path.basename(d).split("_")[-1]  # Last part is selection method
+                selection = os.path.basename(d).split("_")[
+                    -1
+                ]  # Last part is selection method
                 df["selection"] = selection
                 result_dfs.append(df)
 
@@ -100,13 +143,16 @@ def generate_multitrace_figures(
                 )
 
                 # Save figures inside the correct simulation directory
-                png_file = os.path.join(results_dir_name, f"{prefix}_{clients}_{metric}_over_time.png")
+                png_file = os.path.join(
+                    results_dir_name, f"{prefix}_{clients}_{metric}_over_time.png"
+                )
                 fig.write_image(png_file, scale=2, engine="kaleido")
                 print(f"Figure saved as {png_file}")
 
     # Process IID and non-IID results
     process_results(iids_by_clients, "iid")
     process_results(noniids_by_clients, "noniid")
+
 
 if __name__ == "__main__":
     generate_multitrace_figures()

@@ -13,6 +13,13 @@ from functools import reduce
 import collections
 import os
 import sys
+from torch.optim.lr_scheduler import (
+    CosineAnnealingWarmRestarts,
+    MultiplicativeLR,
+    ConstantLR,
+    ReduceLROnPlateau,
+)
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -80,15 +87,21 @@ class Models:
             self.model = ResNet18(num_classes=num_classes)
             # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
         elif model_name == "WResNet40-2":
-            self.model = WideResNet(depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0)
+            self.model = WideResNet(
+                depth=40, num_classes=num_classes, widen_factor=2, dropRate=0.0
+            )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         elif model_name == "WResNet16-1":
-            self.model = WideResNet(depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0)
+            self.model = WideResNet(
+                depth=16, num_classes=num_classes, widen_factor=1, dropRate=0.0
+            )
             # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         else:
             raise ValueError(f"model_name {model_name} is not supported")
 
         self.optimizer = SGD(self.model.parameters(), lr=learning_rate)
+        # self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=10, T_mult=2)
+        self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda=0.1)
         _ = self.model.to(device)
         self.loss_fn = nn.CrossEntropyLoss().to(device)
         self._get_weight_info()
@@ -97,7 +110,7 @@ class Models:
         with torch.no_grad():
             state = self.model.state_dict()
             return state[self.weights_key_list[0]].view(-1)
-        
+
     def weight_variable(self, tensor: Tensor, mean: float, std: float) -> Tensor:
         size = tensor.shape
         tmp = tensor.new_empty(size + (4,)).normal_()
@@ -153,7 +166,9 @@ class Models:
                 )
                 start_index = 0
                 for i, [_, v] in zip(range(len(self.weights_num_list)), state.items()):
-                    weight_flatten_tensor[start_index : start_index + self.weights_num_list[i]] = v.view(1, -1)
+                    weight_flatten_tensor[
+                        start_index : start_index + self.weights_num_list[i]
+                    ] = v.view(1, -1)
                     start_index += self.weights_num_list[i]
 
                 return weight_flatten_tensor
@@ -161,15 +176,22 @@ class Models:
                 return copy.deepcopy(state)
 
     def tamper_weights_large_negative(self) -> None:
-        tampered_state = {k: torch.ones_like(v) * -10 for k, v in self.model.state_dict().items()}
+        tampered_state = {
+            k: torch.ones_like(v) * -10 for k, v in self.model.state_dict().items()
+        }
         self.model.load_state_dict(tampered_state)
 
     def tamper_weights_reverse(self) -> None:
-        tampered_state = {k: torch.ones_like(v) * -1 for k, v in self.model.state_dict().items()}
+        tampered_state = {
+            k: torch.ones_like(v) * -1 for k, v in self.model.state_dict().items()
+        }
         self.model.load_state_dict(tampered_state)
 
     def tamper_weights_random(self) -> None:
-        tampered_state = {k: torch.rand_like(v) for k, v in self.model.state_dict().items()}
+        tampered_state = {
+            k: (torch.rand_like(v) * 100) - 50
+            for k, v in self.model.state_dict().items()
+        }
         self.model.load_state_dict(tampered_state)
 
     def assign_weight(self, w: Tensor | dict[str, Any]) -> None:
@@ -187,13 +209,17 @@ class Models:
         for i in range(len(self.weights_key_list)):
             sub_weight = w[start_index : start_index + self.weights_num_list[i]]
             if len(sub_weight) > 0:
-                weight_dic[self.weights_key_list[i]] = sub_weight.view(self.weights_size_list[i])
+                weight_dic[self.weights_key_list[i]] = sub_weight.view(
+                    self.weights_size_list[i]
+                )
             else:
                 weight_dic[self.weights_key_list[i]] = torch.tensor(0)
             start_index += self.weights_num_list[i]
         self.model.load_state_dict(weight_dic)
 
-    def _data_reshape(self, imgs: Tensor, labels: Tensor | None = None) -> tuple[Tensor, Tensor | None]:
+    def _data_reshape(
+        self, imgs: Tensor, labels: Tensor | None = None
+    ) -> tuple[Tensor, Tensor | None]:
         if len(imgs.size()) < 3:
             x_image = imgs.view([-1, self.channels, self.img_size, self.img_size])
             if labels is not None:
@@ -336,7 +362,9 @@ class Models:
             f1 = 0.0
         return round(f1, 5)
 
-    def predict(self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device) -> Tensor:
+    def predict(
+        self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device
+    ) -> Tensor:
         self.assign_weight(w)
         img, _ = self._data_reshape(img)
         with torch.no_grad():
@@ -345,7 +373,9 @@ class Models:
 
         return pred
 
-    def train_one_epoch(self, data_train_loader: DataLoader, device: torch.device) -> None:
+    def train_one_epoch(
+        self, data_train_loader: DataLoader, device: torch.device
+    ) -> None:
         self.model.train()
         for _, (images, labels) in enumerate(data_train_loader):
             images, labels = Variable(images).to(device), Variable(labels).to(device)

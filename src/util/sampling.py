@@ -40,7 +40,9 @@ def mnist_noniid(dataset: MNIST, num_users: int):
     class_indices = {i: np.where(labels == i)[0] for i in range(num_classes)}
 
     dict_users = {i: np.array([], dtype="int64") for i in range(num_users)}
-    dominant_classes = [np.random.choice(num_classes, 2, replace=True) for _ in range(num_users)]
+    dominant_classes = [
+        np.random.choice(num_classes, 2, replace=True) for _ in range(num_users)
+    ]
 
     dominant_ratio = 0.7
 
@@ -57,15 +59,21 @@ def mnist_noniid(dataset: MNIST, num_users: int):
             )
             for dominant_class in dominant_class_pair
         ]
-        dict_users[user_id] = np.concatenate((dict_users[user_id], dominant_class_data[0], dominant_class_data[1]))
+        dict_users[user_id] = np.concatenate(
+            (dict_users[user_id], dominant_class_data[0], dominant_class_data[1])
+        )
 
-        remaining_classes = [c for c in range(num_classes) if c not in dominant_class_pair]
+        remaining_classes = [
+            c for c in range(num_classes) if c not in dominant_class_pair
+        ]
         num_other_samples = num_samples_per_user - num_dominant_samples
 
         for class_id in remaining_classes:
             num_class_samples = int(num_other_samples / (num_classes - 1))
 
-            class_data = np.random.choice(class_indices[class_id], size=num_class_samples, replace=True)  # Allow ov
+            class_data = np.random.choice(
+                class_indices[class_id], size=num_class_samples, replace=True
+            )  # Allow ov
             dict_users[user_id] = np.concatenate((dict_users[user_id], class_data))
 
     return dict_users
@@ -99,7 +107,9 @@ def cifar_noniid(dataset: CIFAR10, num_users: int) -> dict[int, np.ndarray]:
     class_indices = {i: np.where(labels == i)[0] for i in range(num_classes)}
 
     dict_users = {i: np.array([], dtype="int64") for i in range(num_users)}
-    dominant_classes = [np.random.choice(num_classes, 2, replace=True) for _ in range(num_users)]
+    dominant_classes = [
+        np.random.choice(num_classes, 2, replace=True) for _ in range(num_users)
+    ]
 
     dominant_ratio = 0.7
 
@@ -116,15 +126,21 @@ def cifar_noniid(dataset: CIFAR10, num_users: int) -> dict[int, np.ndarray]:
             )
             for dominant_class in dominant_class_pair
         ]
-        dict_users[user_id] = np.concatenate((dict_users[user_id], dominant_class_data[0], dominant_class_data[1]))
+        dict_users[user_id] = np.concatenate(
+            (dict_users[user_id], dominant_class_data[0], dominant_class_data[1])
+        )
 
-        remaining_classes = [c for c in range(num_classes) if c not in dominant_class_pair]
+        remaining_classes = [
+            c for c in range(num_classes) if c not in dominant_class_pair
+        ]
         num_other_samples = num_samples_per_user - num_dominant_samples
 
         for class_id in remaining_classes:
             num_class_samples = int(num_other_samples / (num_classes - 1))
 
-            class_data = np.random.choice(class_indices[class_id], size=num_class_samples, replace=True)  # Allow ov
+            class_data = np.random.choice(
+                class_indices[class_id], size=num_class_samples, replace=True
+            )  # Allow ov
             dict_users[user_id] = np.concatenate((dict_users[user_id], class_data))
 
     return dict_users
@@ -182,7 +198,9 @@ def svhn_noniid(dataset: SVHN, num_users: int):
         rand_set = set(np.random.choice(idx_shard, 2, replace=False))
         idx_shard = list(set(idx_shard) - rand_set)
         for rand in rand_set:
-            dict_users[i] = np.concatenate((dict_users[i], idxs[rand * num_imgs : (rand + 1) * num_imgs]), axis=0)
+            dict_users[i] = np.concatenate(
+                (dict_users[i], idxs[rand * num_imgs : (rand + 1) * num_imgs]), axis=0
+            )
     return dict_users
 
 
@@ -243,7 +261,9 @@ if __name__ == "__main__":
         "../data/mnist/",
         train=True,
         download=True,
-        transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
+        transform=transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        ),
     )
     num = 100
     d = mnist_noniid(dataset_train, num)

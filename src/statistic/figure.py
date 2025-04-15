@@ -9,9 +9,10 @@ import os
 import pandas as pd
 import plotly.express as px
 from typing import Optional
-from config import load_config  
+from config import load_config
 
 config = load_config()
+
 
 def generate_figures(results_file_name: Optional[str] = None):
     if results_file_name is None:
@@ -41,4 +42,3 @@ def generate_figures(results_file_name: Optional[str] = None):
         png_file = os.path.join(path_header, f"{metric}_over_time.png")
         fig.write_image(png_file, scale=2, engine="kaleido")
         print(f"Figure saved as {png_file}")
-

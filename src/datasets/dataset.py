@@ -306,7 +306,9 @@ def get_data_info(dataset: str, model_name: str) -> tuple[int, int, int]:
     return img_size, channels, num_classes
 
 
-def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionDataset, VisionDataset, VisionDataset]:
+def load_data(
+    dataset: str, data_path: str, model_name: str
+) -> tuple[VisionDataset, VisionDataset, VisionDataset]:
     """load test, train and validation data for the given dataset
     where test and validation datasets have the same label distribution
     Args:
@@ -319,7 +321,9 @@ def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionData
 
     def unbalanced_classes(test_val_index, targets):
         # targets = [targets[i] for i in test_val_index]
-        under_represented_classes = random.sample(range(10), config.under_represented_classes)
+        under_represented_classes = random.sample(
+            range(10), config.under_represented_classes
+        )
         class_limit = 500
         class_dist = [0 for _ in range(10)]
         new_test_val_index = []
@@ -373,7 +377,9 @@ def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionData
                         transforms.RandomCrop(32, padding=4),
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
-                        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                        transforms.Normalize(
+                            (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        ),
                     ]
                 ),
                 download=True,
@@ -388,7 +394,9 @@ def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionData
                         transforms.RandomCrop(32, padding=4),
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
-                        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+                        transforms.Normalize(
+                            (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                        ),
                     ]
                 ),
                 download=True,
@@ -424,11 +432,19 @@ def load_data(dataset: str, data_path: str, model_name: str) -> tuple[VisionData
                 transforms.Normalize(mean, std),
             ]
         )
-        transform_test = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
+        transform_test = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize(mean, std)]
+        )
 
-        data_train = SVHN(data_path + "/SVHN", split="train", download=True, transform=transform_train)
-        data_test = SVHN(data_path + "/SVHN", split="test", download=True, transform=transform_test)
-        data_val = SVHN(data_path + "/SVHN", split="test", download=True, transform=transform_test)
+        data_train = SVHN(
+            data_path + "/SVHN", split="train", download=True, transform=transform_train
+        )
+        data_test = SVHN(
+            data_path + "/SVHN", split="test", download=True, transform=transform_test
+        )
+        data_val = SVHN(
+            data_path + "/SVHN", split="test", download=True, transform=transform_test
+        )
 
     elif dataset == "FEMNIST":
         from src.datasets.femnist import FEMNIST

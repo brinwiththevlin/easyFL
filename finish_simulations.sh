@@ -53,6 +53,7 @@ run_simulation_group() {
     local weight_tampering=$3
 
     local client_configs=("25 10" "50 10" "100 10")
+    # local client_configs=("100 10")
     local selection_methods=("kl-kmeans" "random")
 
     for config in "${client_configs[@]}"; do
@@ -77,8 +78,12 @@ run_simulation_group() {
                 python3 src/config.py \
                     --clients "$clients" --per_round "$per_round" --selection "$selection" \
                     --under_rep 3 --iid --res_path "$base_path" --dataset "$dataset" \
-                    --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
+                    --label_tampering "$label_tampering" --weight_tampering "$weight_tampering" &
 
+                PID=$!
+                wait $PID
+
+                
                 python3 src/simulation.py \
                     --iterations 1000 --iid --clients "$clients" --per_round "$per_round" \
                     --selection "$selection" --under_rep 3 --res_path "$base_path" \
@@ -94,8 +99,10 @@ run_simulation_group() {
                 python3 src/config.py \
                     --clients "$clients" --per_round "$per_round" --selection "$selection" \
                     --under_rep 3 --res_path "$base_path" --dataset "$dataset" \
-                    --label_tampering "$label_tampering" --weight_tampering "$weight_tampering"
+                    --label_tampering "$label_tampering" --weight_tampering "$weight_tampering" &
 
+                PID=$!
+                wait $PID
                 python3 src/simulation.py \
                     --iterations 1000 --clients "$clients" --per_round "$per_round" \
                     --selection "$selection" --under_rep 3 --res_path "$base_path" \
@@ -134,14 +141,15 @@ run_simulation_group() {
 }
 
 # Main script execution
-DATASETS=("MNIST" "cifar10")
+DATASETS=("MNIST")
 LABEL_TAMPERING=("zero" "reverse" "random" "none")
 WEIGHT_TAMPERING=("none" "large_neg" "reverse" "random")
 
 for dataset in "${DATASETS[@]}"; do
     for label_tampering in "${LABEL_TAMPERING[@]}"; do
-        for weight_tampering in "${WEIGHT_TAMPERING[@]}"; do
-            run_simulation_group "$dataset" "$label_tampering" "$weight_tampering"
-        done
+        run_simulation_group "$dataset" "$label_tampering" "none"
+    done
+    for weight_tampering in "${WEIGHT_TAMPERING[@]}"; do
+        run_simulation_group "$dataset" none "$weight_tampering"
     done
 done

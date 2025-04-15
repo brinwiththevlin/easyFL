@@ -10,7 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 
 class TestModel(unittest.TestCase):
-    def run_model_common(self, dataset: str, dataset_file_path: str, model_name: str, dim_predict: int):
+    def run_model_common(
+        self, dataset: str, dataset_file_path: str, model_name: str, dim_predict: int
+    ):
         data_train, _ = load_data(dataset, dataset_file_path, model_name)
         model = get_model(
             model_name,
@@ -44,7 +46,9 @@ class TestModel(unittest.TestCase):
         self.run_model_common("SVHN", config.dataset_file_path, "WResNet16-1", 10)
 
     def test_cifar_10_run_model(self):
-        self.run_model_common("cifar10", config.dataset_file_path, "ModelCNNCifar10", 10)
+        self.run_model_common(
+            "cifar10", config.dataset_file_path, "ModelCNNCifar10", 10
+        )
         self.run_model_common("cifar10", config.dataset_file_path, "ResNet34", 10)
         self.run_model_common("cifar10", config.dataset_file_path, "ResNet18", 10)
 

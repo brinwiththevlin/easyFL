@@ -1,3 +1,14 @@
 % Literature Review
-\chapter{Literature Review}
-[Summarize related work and key references.]
+\chapter{Background \& Related Work}
+In this chapter, we provide the necessary Background knowledge on federated learning and client selection. We also offer information on attacker methods and their effect on the learning performance and client selection. Finally, we discuss the issues we aim to solve.
+
+\section{Federated Learning}
+Federated Learning (FL) is a distributed machine learning paradigm that enables multiple clients, such as mobile devices, edge servers, or institutions, to collaboratively train a global model without directly sharing their local data \cite{mcmahan2017communication}. Unlike traditional centralized training, where data is collected and stored in a single server, FL keeps data decentralized, thus preserving privacy and reducing the risk of data breaches.
+
+FL operates in rounds, where clients train the model locally using their private datasets and send only model updates (e.g., gradients or weights) to a central server. The server then aggregates these updates to improve the global model, typically using algorithms such as Federated Averaging (FedAvg) \cite{mcmahan2017communication} or FedProx \cite{li2020federated}. This decentralized approach is particularly useful in scenarios where data cannot be easily shared due to privacy regulations, such as healthcare \cite{sheller2020federated}, finance \cite{yang2019federated}, and mobile applications \cite{hard2018federated}.
+
+One of the primary challenges in FL is \textbf{data heterogeneity}, where client datasets have \textbf{non-independent and identically distributed (non-IID)} characteristics. This leads to issues such as slow convergence and biased model updates, as different clients contribute varying amounts of data and label distributions \cite{zhao2018federated}. Various strategies have been proposed to mitigate these challenges, including personalized FL, clustering-based methods, and adaptive aggregation techniques.
+
+Security and privacy are also critical concerns in FL. Although raw data remains on clients' devices, attacks such as \textbf{model inversion}, \textbf{membership inference}, and \textbf{data poisoning} can still compromise privacy and model integrity \cite{nasr2019comprehensive}. Differential privacy \cite{geyer2017differentially} and secure aggregation \cite{bonawitz2017practical} have been introduced to enhance security and protect sensitive client data.
+
+In summary, Federated Learning provides a promising approach to decentralized machine learning, enabling collaborative model training while addressing privacy concerns. However, challenges such as data heterogeneity, communication efficiency, and security risks continue to drive ongoing research in this field.

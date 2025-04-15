@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import re
 
+
 def parse_log(log_path):
     scenarios = []
     current_scenario = None
@@ -13,11 +14,11 @@ def parse_log(log_path):
                 if current_scenario is not None:
                     scenarios.append(current_scenario)
                 # Start new scenario with parsed arguments.
-                args_line = line[len("Arguments received:"):].strip()
+                args_line = line[len("Arguments received:") :].strip()
                 args = {}
                 # Split by space and extract key=value pairs.
                 for part in args_line.split():
-                    if '=' in part:
+                    if "=" in part:
                         key, value = part.split("=", 1)
                         args[key] = value
                 current_scenario = {"args": args, "logs": []}
@@ -28,13 +29,14 @@ def parse_log(log_path):
         scenarios.append(current_scenario)
     return scenarios
 
+
 def analyze_scenario(scenario):
     kl_filtered = 0
     kmeans_filtered = 0
     lof_filtered = 0
     passed = None
     pattern = re.compile(r"\*\*\*\{(\d+)\} nodes passed the filter\*\*\*")
-    
+
     for log_line in scenario["logs"]:
         if "filtered out by KL divergence" in log_line:
             kl_filtered += 1
@@ -46,6 +48,7 @@ def analyze_scenario(scenario):
         if m:
             passed = int(m.group(1))
     return kl_filtered, kmeans_filtered, passed
+
 
 def generate_report(scenarios):
     report_lines = []
@@ -65,6 +68,7 @@ def generate_report(scenarios):
             report_lines.append("    Nodes passed filter: Not reported")
         report_lines.append("")
     return "\n".join(report_lines)
+
 
 if __name__ == "__main__":
     log_file = "bad_filter.log"  # Adjust path if necessary.

@@ -88,7 +88,7 @@ run_simulations() {
 # Main script execution
 # Parameter arrays
 BAD_NODES=(1)
-DATASETS=("MNIST" "cifar10")
+DATASETS=("MNIST")
 LABEL_TAMPERING=("none" "zero" "reverse" "random")
 WEIGHT_TAMPERING=("none" "reverse" "random" )
 

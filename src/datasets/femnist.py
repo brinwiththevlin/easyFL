@@ -15,7 +15,9 @@ class FEMNIST(VisionDataset):
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
-        super(FEMNIST, self).__init__(root, transform=transform, target_transform=target_transform)
+        super(FEMNIST, self).__init__(
+            root, transform=transform, target_transform=target_transform
+        )
         self.train = train
 
         self.train_data_dir = os.path.join(root, "train")
@@ -90,4 +92,6 @@ class FEMNIST(VisionDataset):
         raise Exception("Download currently not supported")
 
     def _check_exists(self):
-        return os.path.exists(self.train_data_dir) and os.path.exists(self.test_data_dir)
+        return os.path.exists(self.train_data_dir) and os.path.exists(
+            self.test_data_dir
+        )

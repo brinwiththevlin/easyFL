@@ -25,6 +25,7 @@ logging.basicConfig(
     filemode="a",  # Overwrite the log file each time, use "a" for append
 )
 
+
 class DatasetSplit(Dataset):
     def __init__(self, dataset: VisionDataset, idxs: Iterable[int]):
         # self.dataset = copy.deepcopy(dataset)
@@ -44,7 +45,7 @@ class DatasetSplit(Dataset):
         elif config.label_tampering == "reverse":
             self.dataset.targets[self.idxs] = 9 - self.dataset.targets[self.idxs]
         elif config.label_tampering == "random":
-            self.dataset.targets[self.idxs] = np.random.randint(0, 10, len(self.idxs))
+            self.dataset.targets[self.idxs] = torch.randint(0, 10, (len(self.idxs),))
         elif config.label_tampering == "none":
             self.dataset.targets[self.idxs] = self.dataset.targets[self.idxs]
         else:
@@ -59,11 +60,13 @@ class DatasetSplit(Dataset):
 @click.option(
     "--selection",
     default="kl-kmeans",
-    type=click.Choice(["kl-kmeans","random"]),
+    type=click.Choice(["kl-kmeans", "random"]),
 )
 @click.option("--bad_nodes", default=0, help="number of bad nodes")
 @click.option("--res_path", default=None, help="path to save results")
-@click.option("--under_rep", type=int, default=3, help="number of under-represented classes")
+@click.option(
+    "--under_rep", type=int, default=3, help="number of under-represented classes"
+)
 @click.option("--dataset", default="MNIST", help="dataset to use")
 @click.option(
     "--label_tampering",
@@ -92,11 +95,21 @@ def main(
 ) -> None:
     config = Config()
     config.parse_args(
-        iterations, iid, clients, per_round, selection, res_path, under_rep, dataset, label_tampering, weight_tampering
+        iterations,
+        iid,
+        clients,
+        per_round,
+        selection,
+        res_path,
+        under_rep,
+        dataset,
+        label_tampering,
+        weight_tampering,
     )
     config.save_config()
     config = load_config()
-    
+
+    step_size = config.step_size
 
     random.seed(config.seed)
     np.random.seed(config.seed)  # numpy
@@ -112,14 +125,17 @@ def main(
 
     logging.info(f"Arguments received: {arg_str}")
 
-
     bad_subset = random.sample(range(clients), clients // 10)
-    
-    data_train, data_test, data_validate = load_data(config.dataset, config.dataset_file_path, config.model_name)
+
+    data_train, data_test, data_validate = load_data(
+        config.dataset, config.dataset_file_path, config.model_name
+    )
     data_train_loader = DataLoader(
         data_train, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
     )  # num_workers=8
-    data_test_loader = DataLoader(data_test, batch_size=config.batch_size_eval, shuffle=True, num_workers=0)  # num_workers=8
+    data_test_loader = DataLoader(
+        data_test, batch_size=config.batch_size_eval, shuffle=True, num_workers=0
+    )  # num_workers=8
     # data_validation_loader = DataLoader(
     #     data_validate, batch_size=config.batch_size_eval, num_workers=0
     # )
@@ -132,7 +148,7 @@ def main(
         config.model_name,
         config.dataset,
         rand_seed=config.seed,
-        step_size=config.step_size,
+        step_size=step_size,
         device=config.device,
         flatten_weight=config.flatten_weight,
     )
@@ -140,11 +156,13 @@ def main(
     stat = CollectStatistics(results_file_name=config.fl_results_file_path)
     train_loader_list: list[DataLoader] = []
     dataiter_list = []
-    weight_list: list[torch.Tensor | dict] = [torch.empty(0) for _ in range(config.n_nodes)]
+    weight_list: list[torch.Tensor | dict] = [
+        torch.empty(0) for _ in range(config.n_nodes)
+    ]
     for n in range(config.n_nodes):
-        data: DatasetSplit= DatasetSplit(data_train, dict_users[n])
+        data: DatasetSplit = DatasetSplit(data_train, dict_users[n])
         if n in bad_subset:
-           data.label_tampering(config) 
+            data.label_tampering(config)
         train_loader_list.append(
             DataLoader(
                 data,
@@ -183,6 +201,9 @@ def main(
                 output = model.model(images)
                 loss = model.loss_fn(output, labels)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    model.model.parameters(), max_norm=1.0
+                )  # Prevent divergence
                 model.optimizer.step()
 
             if n in bad_subset:
@@ -199,14 +220,19 @@ def main(
             w = model.get_weight()  # deepcopy is already included here
             weight_list[n] = w
 
-
         if config.selection == "random":
-            node_subset = np.random.choice(range(config.n_nodes), config.n_nodes_in_each_round, replace=False).tolist()
+            node_subset = np.random.choice(
+                range(config.n_nodes), config.n_nodes_in_each_round, replace=False
+            ).tolist()
             if num_iter % config.num_iter_one_output == 0:
-                logging.info(f"selection at iteration {num_iter}: random selection: {node_subset}")
+                # model.scheduler.step()
+                logging.info(
+                    f"selection at iteration {num_iter}: random selection: {node_subset}"
+                )
                 if set(node_subset) & set(bad_subset):
-                    logging.info(f"***{set(node_subset) & set(bad_subset)} nodes passed the filter***")
-                    continue
+                    logging.info(
+                        f"***{set(node_subset) & set(bad_subset)} nodes passed the filter***"
+                    )
         else:
             node_subset = kmeans_selector(
                 model,
@@ -225,7 +251,6 @@ def main(
             #     config.tolerance,
             # )
 
-
         for n in node_subset:
             if w_accu is None:  # accumulated weights
                 w_accu = weight_list[n]
@@ -235,7 +260,7 @@ def main(
                     w_accu += weight_list[n]
                 else:
                     assert isinstance(w_accu, dict)
-                    assert isinstance( weight_list[n], dict)
+                    assert isinstance(weight_list[n], dict)
                     for k in w_accu.keys():
                         w_accu[k] += weight_list[n][k]
 
@@ -276,7 +301,9 @@ def main(
             w_global = copy.deepcopy(w_global_prev)
 
         if num_iter - last_output >= config.num_iter_one_output:
-            stat.collect_stat_global(num_iter, model, data_train_loader, data_test_loader, w_global)
+            stat.collect_stat_global(
+                num_iter, model, data_train_loader, data_test_loader, w_global
+            )
             last_output = num_iter
 
         if num_iter >= config.max_iter:

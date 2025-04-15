@@ -21,7 +21,7 @@ logging.basicConfig(
     filename="bad_filter.log",  # Log file destination
     filemode="a",  # Overwrite the log file each time, use "a" for append
 )
-config: Config= load_config("config.yaml")
+config: Config = load_config("config.yaml")
 ITERATION = 0
 
 
@@ -33,7 +33,9 @@ def cosine_sim(vector1: Tensor, vector2: Tensor) -> float:
     temp2: Tensor = vector2 / norm2
 
     # Compute the dot product and return it as a float
-    dot_product = float(temp1.dot(temp2).item())  # Ensure it returns a scalar as a float
+    dot_product = float(
+        temp1.dot(temp2).item()
+    )  # Ensure it returns a scalar as a float
     return float(dot_product)
 
 
@@ -76,8 +78,12 @@ def sim_matrix(weights_list: list[Tensor], similarity: Callable) -> np.ndarray:
     return matrix
 
 
-def graph_selector(weights_list: list[Tensor], size: int, tolerance: float) -> list[int]:
-    assert isinstance(weights_list[0], Tensor), "not implemented for flattenweight = false"
+def graph_selector(
+    weights_list: list[Tensor], size: int, tolerance: float
+) -> list[int]:
+    assert isinstance(
+        weights_list[0], Tensor
+    ), "not implemented for flattenweight = false"
     assert config.n_nodes is not None
     matrix: np.ndarray = sim_matrix(weights_list, sim_functions[config.selection])
 
@@ -93,7 +99,9 @@ def graph_selector(weights_list: list[Tensor], size: int, tolerance: float) -> l
     components = [list(c) for c in components]
     nodes: list[int] = []
     for component in components:
-        sample_percent = max(floor((len(component) / config.n_nodes) * size), 1)  # always sample at least 1
+        sample_percent = max(
+            floor((len(component) / config.n_nodes) * size), 1
+        )  # always sample at least 1
         nodes.extend(random.sample(component, sample_percent))
     return nodes
 
@@ -133,7 +141,9 @@ def kmeans_selector(
     # tolerance: float,
 ) -> list[int]:
     global ITERATION
-    log_every_50(f"selection at iteration {ITERATION}: bad subset: {bad_subset}, label tampering: {label_tampering}, weight tampering: {weight_tampering}")
+    log_every_50(
+        f"selection at iteration {ITERATION}: bad subset: {bad_subset}, label tampering: {label_tampering}, weight tampering: {weight_tampering}"
+    )
     # WARNING: only works for MNIST and CIFAR
     local_targets = []
     filtered = []
@@ -145,38 +155,46 @@ def kmeans_selector(
 
     divergences = [kl_divergence(x, val_targets, 10) for x in local_targets]
     tolerance = get_tolerance(divergences)
-    
+
     # count = model.weights_num_list[0]
     # new_weights_list = [
     #     weights_list[i][:count] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)
     # ]
-    new_weights_list = [weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i]) for i, x in enumerate(divergences)]
-    non_zero_indices = [i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)]
+    new_weights_list = [
+        weights_list[i] if x < tolerance else torch.zeros_like(weights_list[i])
+        for i, x in enumerate(divergences)
+    ]
+    non_zero_indices = [
+        i for i, v in enumerate(new_weights_list) if not torch.all(v == 0)
+    ]
     for n in bad_subset:
         if n not in non_zero_indices:
             log_every_50(f"Node {n} filtered out by KL divergence")
             filtered.append(n)
-    non_zero_vectors = torch.stack([new_weights_list[i] for i in non_zero_indices]).cpu()
+    non_zero_vectors = torch.stack(
+        [new_weights_list[i] for i in non_zero_indices]
+    ).cpu()
 
-    k = int(len(non_zero_vectors[0])  * 0.2)
+    k = int(len(non_zero_vectors[0]) * 0.2)
     norms = torch.norm(non_zero_vectors, dim=0)
     top_k_indices = torch.topk(norms, k=k, largest=True).indices
     non_zero_vectors = non_zero_vectors[:, top_k_indices].numpy()
 
-    lof = LocalOutlierFactor(n_neighbors=max(20, len(non_zero_vectors) - 1),contamination=0.1)
+    lof = LocalOutlierFactor(n_neighbors=10, contamination="auto")
     pred = lof.fit_predict(non_zero_vectors)
     inlier_mask = pred == 1
     non_zero_vectors = non_zero_vectors[inlier_mask]
-    non_zero_indices = [non_zero_indices[i] for i in range(len(non_zero_indices)) if inlier_mask[i]]
+    non_zero_indices = [
+        non_zero_indices[i] for i in range(len(non_zero_indices)) if inlier_mask[i]
+    ]
     for n in bad_subset:
         if n not in non_zero_indices and n not in filtered:
             log_every_50(f"Node {n} filtered out by LOF")
             filtered.append(n)
 
-
     # convert non_zero_vectors to numpy
     # non_zero_vectors = non_zero_vectors
-    kmeans = KMeans(n_clusters=size//2, random_state=config.seed)
+    kmeans = KMeans(n_clusters=size // 2, random_state=config.seed)
     kmeans.fit(non_zero_vectors)
     # chose one example from each cluster closest to the center
     centers = kmeans.cluster_centers_
@@ -191,9 +209,9 @@ def kmeans_selector(
         closest_idxs = torch.argsort(distances)[:2]
         for closest_idx in closest_idxs:
             # Get the index of the closest vector within the non-zero vectors
-           closest.append(non_zero_indices[closest_idx]) 
+            closest.append(non_zero_indices[closest_idx])
         # closest_idx = int(torch.argmin(distances).item())
-        
+
         # closest.append(non_zero_indices[closest_idx])
 
     for n in bad_subset:
@@ -201,8 +219,13 @@ def kmeans_selector(
             log_every_50(f"Node {n} filtered out by KMeans")
             filtered.append(n)
 
-    if set(bad_subset)!= set(filtered):
+    if set(bad_subset) != set(filtered):
         log_every_50(f"***{set(bad_subset) - set(filtered)} nodes passed the filter***")
+
+    if len(closest) < size:
+        closest.extend(
+            random.sample(closest, size - len(closest))
+        )  # randomly sample from the closest to fill the size
     ITERATION += config.tau_setup
     return closest
 
@@ -213,8 +236,5 @@ def get_tolerance(divergences: list[float]):
 
 def log_every_50(message: str, *args, **kwargs) -> None:
     global ITERATION
-    if ITERATION % (50)== 0:
+    if ITERATION % (50) == 0:
         logging.info(message, *args, **kwargs)
-
-        
-        

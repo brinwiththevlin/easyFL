@@ -31,7 +31,9 @@ def test_sim_matrix():
         [0.7142857313156128, 1.0, 0.3678794503211975],
         [0.7142857313156128, 0.3678794503211975, 1.0],
     ]
-    assert pytest.approx(sim_matrix(weights_list, cosine_sim), abs=1e-5) == expected_matrix
+    assert (
+        pytest.approx(sim_matrix(weights_list, cosine_sim), abs=1e-5) == expected_matrix
+    )
 
 
 def test_graph_selector():

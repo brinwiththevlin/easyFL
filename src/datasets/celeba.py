@@ -14,7 +14,9 @@ class CelebA(VisionDataset):
         target_transform: Callable | None = None,
         read_all_data_to_mem: bool = True,
     ):
-        super(CelebA, self).__init__(root, transform=transform, target_transform=target_transform)
+        super(CelebA, self).__init__(
+            root, transform=transform, target_transform=target_transform
+        )
         self.train = train
         self.read_all_data_to_mem = read_all_data_to_mem
 
