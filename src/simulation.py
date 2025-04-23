@@ -220,12 +220,12 @@ def main(
             w = model.get_weight()  # deepcopy is already included here
             weight_list[n] = w
 
+
         if config.selection == "random":
             node_subset = np.random.choice(
                 range(config.n_nodes), config.n_nodes_in_each_round, replace=False
             ).tolist()
             if num_iter % config.num_iter_one_output == 0:
-                # model.scheduler.step()
                 logging.info(
                     f"selection at iteration {num_iter}: random selection: {node_subset}"
                 )
@@ -305,6 +305,7 @@ def main(
                 num_iter, model, data_train_loader, data_test_loader, w_global
             )
             last_output = num_iter
+            model.scheduler.step()
 
         if num_iter >= config.max_iter:
             break

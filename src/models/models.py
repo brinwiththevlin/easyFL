@@ -19,6 +19,7 @@ from torch.optim.lr_scheduler import (
     ConstantLR,
     ReduceLROnPlateau,
 )
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -100,8 +101,8 @@ class Models:
             raise ValueError(f"model_name {model_name} is not supported")
 
         self.optimizer = SGD(self.model.parameters(), lr=learning_rate)
-        # self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=10, T_mult=2)
-        self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda=0.1)
+        self.scheduler = CosineAnnealingWarmRestarts(self.optimizer, T_0=10, T_mult=2)
+        # self.scheduler = MultiplicativeLR(self.optimizer, lr_lambda=lambda x: 0.)
         _ = self.model.to(device)
         self.loss_fn = nn.CrossEntropyLoss().to(device)
         self._get_weight_info()
@@ -294,27 +295,18 @@ class Models:
             self.assign_weight(w)
 
         self.model.eval()
-        true_positive = 0
-        false_positive = 0
+        all_preds = []
+        all_labels = []
 
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = images.to(device), labels.to(device)
                 output = self.model(images)
-                pred = output.data.max(1)[1]  # Get the predicted class
+                pred = output.data.max(1)[1].cpu().numpy()
+                all_preds.extend(pred)
+                all_labels.extend(labels.cpu().numpy())
 
-                # Calculate the true positives (correctly classified samples)
-                true_positive += (pred == labels).sum().item()
-
-                # Calculate the false positives (incorrectly classified samples)
-                false_positive += (pred != labels).sum().item()
-
-        try:
-            precision = true_positive / (true_positive + false_positive)
-        except ZeroDivisionError:
-            precision = 0.0
-
-        return round(precision, 5)
+        return round(precision_score(all_labels, all_preds, average="macro", zero_division=0), 5)
 
     def recall(
         self,
@@ -326,27 +318,18 @@ class Models:
             self.assign_weight(w)
 
         self.model.eval()
-        true_positive = 0
-        total_actual_positive = 0
+        all_preds = []
+        all_labels = []
 
         with torch.no_grad():
             for _, (images, labels) in enumerate(data_test_loader):
                 images, labels = images.to(device), labels.to(device)
                 output = self.model(images)
-                pred = output.data.max(1)[1]  # Get the predicted class
+                pred = output.data.max(1)[1].cpu().numpy()
+                all_preds.extend(pred)
+                all_labels.extend(labels.cpu().numpy())
 
-                # Calculate the true positives (correctly classified samples)
-                true_positive += (pred == labels).sum().item()
-
-                # Total actual positives (total number of samples)
-                total_actual_positive += labels.size(0)
-
-        try:
-            recall = true_positive / total_actual_positive
-        except ZeroDivisionError:
-            recall = 0.0
-
-        return round(recall, 5)
+        return round(recall_score(all_labels, all_preds, average="macro", zero_division=0), 5)
 
     def f1(
         self,
@@ -354,13 +337,22 @@ class Models:
         w: Tensor | dict[str, Tensor] | None,
         device: torch.device,
     ) -> float:
-        precision = self.precision(data_test_loader, w, device)
-        recall = self.recall(data_test_loader, w, device)
-        try:
-            f1 = (2 * precision * recall) / (precision + recall)
-        except ZeroDivisionError:
-            f1 = 0.0
-        return round(f1, 5)
+        if w is not None:
+            self.assign_weight(w)
+
+        self.model.eval()
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for _, (images, labels) in enumerate(data_test_loader):
+                images, labels = images.to(device), labels.to(device)
+                output = self.model(images)
+                pred = output.data.max(1)[1].cpu().numpy()
+                all_preds.extend(pred)
+                all_labels.extend(labels.cpu().numpy())
+
+        return round(f1_score(all_labels, all_preds, average="macro", zero_division=0), 5)
 
     def predict(
         self, img: Tensor, w: Tensor | dict[str, Tensor], device: torch.device

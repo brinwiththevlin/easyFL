@@ -4,7 +4,7 @@ myenv/
 .idea/
 __pycache__
 *.py___jb_tmp___
-*/results/
+*/*results/
 */dataset_data_files/
 **/*.log
 config.yaml
@@ -20,4 +20,4 @@ config.yaml
 **/*.fls
 **/*.fdb_latexmk
 **/*.synctex.gz
-**/*.out 
+**/*.out
